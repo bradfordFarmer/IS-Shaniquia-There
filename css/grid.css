@@ -1,0 +1,11 @@
+.gridPoint {
+    background-color: red;
+    float: left;
+    display:block;
+    overflow:hidden;
+}
+
+.completed-true {
+  text-decoration: line-through;
+  color: grey;
+}
