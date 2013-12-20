@@ -1,23 +1,23 @@
+###
+    The Objectives are mearly a sub set of important infomation from the grid this is done to allow for caching and faster look up on the browser side because it is        faster to look up 5-10 objectives than it is to loop over 100+ grid points.
+###
 class Objective
-    constructor:(name,description, failedMessage, objectid) ->
+    constructor:(name,description, failedMessage, pointid) ->
         @name = name
         @description =description
-        @objectid = objectid
+        @pointid = pointid
         @failedMessage=failedMessage
         @completed=false
-
-
+        
     
-class Object
-    constructor: (hiddenObject,  id)->
-        @id = id
-        @hiddenObject= hiddenObject
-    
-class Grid
-    constructor: (image,size, objectid)->
+class GridPoint
+    constructor: (image, name, description, failedMessage, size,pointid)->
+        @id = pointid
         @image= image
         @size= size
-        @objectid= objectid
+        @name =name
+        @description=description
+        @failedMessage=failedMessage
         
         
 shuffle = (array)-> 
@@ -38,39 +38,33 @@ app.controller 'GridController',
     class GridController
         CurrentObjective:0
         Objectives:[]
-        Objects :[]
         Grids : []
         size:8
         length:4
-        
-        fillWithDummyObjects:-> 
-            @Objects.push new Object  'none' , i for i in [@Objectives.length-1...@size] 
-                
-        createObjects: ->
-            @Objects.push new Object 'Shaniquia',  @Objects.length
-            @Objectives.push new Objective 'Shaniquia', 'Shaniquia is lost help find her', 'Hell no!', @Objects.length-1
-            @Objects.push new Object "Shaniquia's purse", @Objects.length
-            @Objectives.push new Objective "Shaniquia's purse", 'Shaniquia lost her pruse help her find it',"That's not my purse!", @Objects.length-1
-            @Objects.push new Object "Shaniquia's lipstick", @Objects.length
-            @Objectives.push new Objective "Shaniquia's lipstick", 'Shaniquia is lost her lipstick help her find it',"That's not my lipstick!", @Objects.length-1
-            @fillWithDummyObjects()
+
+        createObjectives: ->
+            @Objectives.push new Objective point.name,point.description, point.failedMessage, point.id   for point in @Grids
         
         createGridPoints : ->
-            @Grids.push new Grid 'Is '+@Objectives[@CurrentObjective].name+' There?', 20, @Objects[i].id for i in [0...@size] 
+            @Grids.push new GridPoint 'green','Shaniqua',  'Shaniqua is lost help find her', 'Hell no!', 20,  0
+            @Grids.push new GridPoint 'blue',"Shaniqua's purse", 'Shaniqua lost her pruse help her find it', "That's not my purse!", 20, 1
+            @Grids.push new GridPoint 'black', "Shaniqua's lipstick",'Shaniqua is lost her lipstick help her find it', "That's not my lipstick!",20,  2
+            @createObjectives()
+            nondummyItems =  @Grids.length-1
+            @Grids.push new GridPoint 'red', '','','', 20, i  for i in [nondummyItems...@size] 
             shuffle(@Grids)
             
-        checkGridPoint: (objectid)-> 
+        checkGridPoint: (point)-> 
             found =false
-            for object in @Objects 
-                if object.id is objectid and object.id is @Objectives[@CurrentObjective].objectid
-                  found =true  
-                
+            if point.id is @Objectives[@CurrentObjective].pointid
+                found =true
             if found
                 @Objectives[@CurrentObjective].completed= true
-                alert 'found'+@Objectives[@CurrentObjective].name
+                alert 'Found '+@Objectives[@CurrentObjective].name
                 @CurrentObjective++
             else 
                 alert @Objectives[@CurrentObjective].failedMessage
         init: ->
-            @createObjects()
             @createGridPoints()
+            
+            
