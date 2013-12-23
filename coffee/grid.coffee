@@ -19,7 +19,7 @@ class GridPoint
         @description=description
         @failedMessage=failedMessage
         
-        
+
 shuffle = (array)-> 
     currentIndex = array.length
     temporaryValue  ={}
@@ -31,7 +31,13 @@ shuffle = (array)->
         array[currentIndex] = array[randomIndex]
         array[randomIndex] = temporaryValue
     array
-
+objectiveTimer=(Objective)->
+    setInterval startTimer(Objective),1000
+    Objective.timeinSeconds++
+    mins = Objective.timeinSeconds%60
+    secondsRemainder = Objective.timeinSeconds-(Objective.timeinSeconds * mins)
+    Objective.timer= mins + ':'+secondsRemainder
+    
 app = angular.module 'ShaniquaApp', []
 
 app.controller 'GridController',
@@ -41,10 +47,12 @@ app.controller 'GridController',
         Grids : []
         size:8
         length:4
-
+        
         createObjectives: ->
             @Objectives.push new Objective point.name,point.description, point.failedMessage, point.id   for point in @Grids
-        
+            @Objectives[0].timer='0:00';
+            @Objectives[0].timeinSeconds=-1
+            objectiveTimer(@Objectives[0]);
         createGridPoints : ->
             @Grids.push new GridPoint 'green','Shaniqua',  'Shaniqua is lost help find her', 'Hell no!', 20,  0
             @Grids.push new GridPoint 'blue',"Shaniqua's purse", 'Shaniqua lost her pruse help her find it', "That's not my purse!", 20, 1
@@ -62,8 +70,16 @@ app.controller 'GridController',
                 @Objectives[@CurrentObjective].completed= true
                 alert 'Found '+@Objectives[@CurrentObjective].name
                 @CurrentObjective++
+                if @CurrentObjective is @Objectives.length
+                    clearInterval()
+                else
+                    @Objectives[@CurrentObjective].timer='0:00';
+                    @Objectives[@CurrentObjective].timeinSeconds=-1
+                    objectiveTimer(@Objectives[@CurrentObjective]);
+               
             else 
-                alert @Objectives[@CurrentObjective].failedMessage
+                @Objectives[@CurrentObjective].timeinSeconds+=10
+                alert @Objectives[@CurrentObjective].failedMessage + ': 10 sec  added'
         init: ->
             @createGridPoints()
             

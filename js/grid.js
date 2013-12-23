@@ -5,7 +5,7 @@
 
 
 (function() {
-  var GridController, GridPoint, Objective, app, shuffle;
+  var GridController, GridPoint, Objective, app, objectiveTimer, shuffle;
 
   Objective = (function() {
     function Objective(name, description, failedMessage, pointid) {
@@ -49,6 +49,15 @@
     return array;
   };
 
+  objectiveTimer = function(Objective) {
+    var mins, secondsRemainder;
+    setInterval(startTimer(Objective), 1000);
+    Objective.timeinSeconds++;
+    mins = Objective.timeinSeconds % 60;
+    secondsRemainder = Objective.timeinSeconds - (Objective.timeinSeconds * mins);
+    return Objective.timer = mins + ':' + secondsRemainder;
+  };
+
   app = angular.module('ShaniquaApp', []);
 
   app.controller('GridController', GridController = (function() {
@@ -65,14 +74,15 @@
     GridController.prototype.length = 4;
 
     GridController.prototype.createObjectives = function() {
-      var point, _i, _len, _ref, _results;
+      var point, _i, _len, _ref;
       _ref = this.Grids;
-      _results = [];
       for (_i = 0, _len = _ref.length; _i < _len; _i++) {
         point = _ref[_i];
-        _results.push(this.Objectives.push(new Objective(point.name, point.description, point.failedMessage, point.id)));
+        this.Objectives.push(new Objective(point.name, point.description, point.failedMessage, point.id));
       }
-      return _results;
+      this.Objectives[0].timer = '0:00';
+      this.Objectives[0].timeinSeconds = -1;
+      return objectiveTimer(this.Objectives[0]);
     };
 
     GridController.prototype.createGridPoints = function() {
@@ -97,9 +107,17 @@
       if (found) {
         this.Objectives[this.CurrentObjective].completed = true;
         alert('Found ' + this.Objectives[this.CurrentObjective].name);
-        return this.CurrentObjective++;
+        this.CurrentObjective++;
+        if (this.CurrentObjective === this.Objectives.length) {
+          return clearInterval();
+        } else {
+          this.Objectives[this.CurrentObjective].timer = '0:00';
+          this.Objectives[this.CurrentObjective].timeinSeconds = -1;
+          return objectiveTimer(this.Objectives[this.CurrentObjective]);
+        }
       } else {
-        return alert(this.Objectives[this.CurrentObjective].failedMessage);
+        this.Objectives[this.CurrentObjective].timeinSeconds += 10;
+        return alert(this.Objectives[this.CurrentObjective].failedMessage + ': 10 sec  added');
       }
     };
 
