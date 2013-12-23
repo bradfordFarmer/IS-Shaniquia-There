@@ -1,26 +1,44 @@
 <!DOCTYPE html>
 <html >
 <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Is Shaniquia there project for programming on the train.">
     <link rel="stylesheet" href="http://yui.yahooapis.com/pure/0.3.0/pure-min.css">
      <link rel="stylesheet" href="css/grid.css">
     <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.2.5/angular.min.js"></script>
 <script src="js/grid.js"></script>
 </head>    
 <body>
-    <div ng-app="ShaniquaApp" class="pure-g-r" ng-controller="GridController as grid" data-ng-init="grid.init()" >
-        <div class ="pure-u-1-1"> {{grid.StageName}}</div>
-        <div class="pure-u-1-4"> <h2> objectives:</h2>
+    <div ng-app="ShaniquaApp" class="pure-g-r" ng-controller="GridController as grid"   id="layout">
+        <div class="sidebar pure-u">
+        <header class="header">
+            <hgroup>
+                <h1 class="brand-title">{{grid.StageName}} </h1><p/>
+               
+            </hgroup>
+            </header>
+             <h2 class="brand-tagline">Objectives:</h2><p/>
             <ul class="unstyled">
                 <li ng-repeat="objective in  grid.Objectives" class='completed-{{objective.completed}}'>
-                    {{objective.description}} : {{objective.timer}}
+                    {{objective.description}} <br/> {{objective.timer}}
                 </li>
             </ul>
-       </div>
-        <div class="pure-u-1-2" >
+      </div>
+        <div class="pure-u-1 content" >
+            <div class="content">
             <div class ="gridPoint" style ="width: {{point.size}}%;   padding-bottom: {{point.size}}%; background-color: {{point.image}}"  ng-repeat="point in grid.Grids" ng-click = "grid.checkGridPoint(point)" >
             </div>
         </div>
-       
+            </div>
+       <footer class="footer pure-u-1 ">
+                <div class="pure-menu pure-menu-horizontal pure-menu-open">
+                    <ul>
+                        <li><a href="https://twitter.com/bchaos567">Twitter</a></li>
+                        <li><a href="https://github.com/bradfordFarmer/IS-Shaniquia-There">Github</a></li>
+                    </ul>
+                </div>
+            </footer>
     </div>   
 </body>    
     

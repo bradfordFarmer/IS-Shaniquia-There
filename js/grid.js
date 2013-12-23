@@ -5,7 +5,9 @@
 
 
 (function() {
-  var GridController, GridPoint, Objective, app, objectiveTimer, shuffle;
+  var GridController, GridPoint, Objective, app, currentController, shuffle;
+
+  currentController = {};
 
   Objective = (function() {
     function Objective(name, description, failedMessage, pointid) {
@@ -49,19 +51,10 @@
     return array;
   };
 
-  objectiveTimer = function(Objective) {
-    var mins, secondsRemainder;
-    setInterval(startTimer(Objective), 1000);
-    Objective.timeinSeconds++;
-    mins = Objective.timeinSeconds % 60;
-    secondsRemainder = Objective.timeinSeconds - (Objective.timeinSeconds * mins);
-    return Objective.timer = mins + ':' + secondsRemainder;
-  };
-
   app = angular.module('ShaniquaApp', []);
 
   app.controller('GridController', GridController = (function() {
-    function GridController() {}
+    GridController.$inject = ['$interval'];
 
     GridController.prototype.CurrentObjective = 0;
 
@@ -69,12 +62,30 @@
 
     GridController.prototype.Grids = [];
 
-    GridController.prototype.size = 8;
+    GridController.prototype.StageName = 'Shaniqua goes to the mall';
+
+    GridController.prototype.size = 19;
 
     GridController.prototype.length = 4;
 
-    GridController.prototype.createObjectives = function() {
+    GridController.prototype.objectiveTimer = function() {
+      var mins, newTime, secondsRemainder;
+      newTime = {};
+      this.Objectives[this.CurrentObjective].timeinSeconds++;
+      mins = this.Objectives[this.CurrentObjective].timeinSeconds % 60;
+      secondsRemainder = this.Objectives[this.CurrentObjective].timeinSeconds - (this.Objectives[this.CurrentObjective].timeinSeconds * mins);
+      if (secondsRemainder < 10) {
+        newTime = mins + ':0' + secondsRemainder;
+      } else {
+        newTime = mins + ':' + secondsRemainder;
+      }
+      return this.Objectives[this.CurrentObjective].timer = newTime;
+    };
+
+    GridController.prototype.createObjectives = function(interval, scope) {
       var point, _i, _len, _ref;
+      this.interval = interval;
+      this.scope = scope;
       _ref = this.Grids;
       for (_i = 0, _len = _ref.length; _i < _len; _i++) {
         point = _ref[_i];
@@ -82,15 +93,17 @@
       }
       this.Objectives[0].timer = '0:00';
       this.Objectives[0].timeinSeconds = -1;
-      return objectiveTimer(this.Objectives[0]);
+      this.CurrentObjective = 0;
+      return this.interval(this.objectiveTimer, 1000);
     };
 
-    GridController.prototype.createGridPoints = function() {
+    GridController.prototype.createGridPoints = function(interval) {
       var i, nondummyItems, _i, _ref;
+      this.interval = interval;
       this.Grids.push(new GridPoint('green', 'Shaniqua', 'Shaniqua is lost help find her', 'Hell no!', 20, 0));
       this.Grids.push(new GridPoint('blue', "Shaniqua's purse", 'Shaniqua lost her pruse help her find it', "That's not my purse!", 20, 1));
       this.Grids.push(new GridPoint('black', "Shaniqua's lipstick", 'Shaniqua is lost her lipstick help her find it', "That's not my lipstick!", 20, 2));
-      this.createObjectives();
+      this.createObjectives(this.interval);
       nondummyItems = this.Grids.length - 1;
       for (i = _i = nondummyItems, _ref = this.size; nondummyItems <= _ref ? _i < _ref : _i > _ref; i = nondummyItems <= _ref ? ++_i : --_i) {
         this.Grids.push(new GridPoint('red', '', '', '', 20, i));
@@ -108,12 +121,11 @@
         this.Objectives[this.CurrentObjective].completed = true;
         alert('Found ' + this.Objectives[this.CurrentObjective].name);
         this.CurrentObjective++;
-        if (this.CurrentObjective === this.Objectives.length) {
-          return clearInterval();
-        } else {
+        if (this.CurrentObjective !== this.Objectives.length) {
           this.Objectives[this.CurrentObjective].timer = '0:00';
-          this.Objectives[this.CurrentObjective].timeinSeconds = -1;
-          return objectiveTimer(this.Objectives[this.CurrentObjective]);
+          return this.Objectives[this.CurrentObjective].timeinSeconds = -1;
+        } else {
+          return clearInterval();
         }
       } else {
         this.Objectives[this.CurrentObjective].timeinSeconds += 10;
@@ -121,9 +133,12 @@
       }
     };
 
-    GridController.prototype.init = function() {
-      return this.createGridPoints();
-    };
+    function GridController(interval, scope) {
+      this.interval = interval;
+      this.scope = scope;
+      this.createGridPoints(this.interval, this.scope);
+      currentController = this.Objectives;
+    }
 
     return GridController;
 
