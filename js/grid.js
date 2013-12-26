@@ -51,10 +51,10 @@
     return array;
   };
 
-  app = angular.module('ShaniquaApp', []);
+  app = angular.module('ShaniquaApp', ['timer']);
 
   app.controller('GridController', GridController = (function() {
-    GridController.$inject = ['$interval'];
+    GridController.$inject = ['$interval', '$scope'];
 
     GridController.prototype.CurrentObjective = 0;
 
@@ -62,25 +62,13 @@
 
     GridController.prototype.Grids = [];
 
+    GridController.prototype.StopTimer = [];
+
     GridController.prototype.StageName = 'Shaniqua goes to the mall';
 
     GridController.prototype.size = 19;
 
     GridController.prototype.length = 4;
-
-    GridController.prototype.objectiveTimer = function() {
-      var mins, newTime, secondsRemainder;
-      newTime = {};
-      this.Objectives[this.CurrentObjective].timeinSeconds++;
-      mins = this.Objectives[this.CurrentObjective].timeinSeconds % 60;
-      secondsRemainder = this.Objectives[this.CurrentObjective].timeinSeconds - (this.Objectives[this.CurrentObjective].timeinSeconds * mins);
-      if (secondsRemainder < 10) {
-        newTime = mins + ':0' + secondsRemainder;
-      } else {
-        newTime = mins + ':' + secondsRemainder;
-      }
-      return this.Objectives[this.CurrentObjective].timer = newTime;
-    };
 
     GridController.prototype.createObjectives = function(interval, scope) {
       var point, _i, _len, _ref;
@@ -93,8 +81,7 @@
       }
       this.Objectives[0].timer = '0:00';
       this.Objectives[0].timeinSeconds = -1;
-      this.CurrentObjective = 0;
-      return this.interval(this.objectiveTimer, 1000);
+      return this.CurrentObjective = 0;
     };
 
     GridController.prototype.createGridPoints = function(interval) {
@@ -125,19 +112,23 @@
           this.Objectives[this.CurrentObjective].timer = '0:00';
           return this.Objectives[this.CurrentObjective].timeinSeconds = -1;
         } else {
-          return clearInterval();
+          return this.StopTimer();
         }
       } else {
         this.Objectives[this.CurrentObjective].timeinSeconds += 10;
-        return alert(this.Objectives[this.CurrentObjective].failedMessage + ': 10 sec  added');
+        alert(this.Objectives[this.CurrentObjective].failedMessage + ': 10 sec  added');
+        return this.rootScope.$broadcast('timer-add-time', 10);
       }
     };
 
-    function GridController(interval, scope) {
+    function GridController(interval, $scope) {
       this.interval = interval;
-      this.scope = scope;
+      this.rootScope = $scope;
       this.createGridPoints(this.interval, this.scope);
       currentController = this.Objectives;
+      this.StopTimer = function() {
+        return this.rootScope.$broadcast('timer-stop');
+      };
     }
 
     return GridController;

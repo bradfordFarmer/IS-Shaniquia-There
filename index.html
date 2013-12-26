@@ -8,6 +8,7 @@
      <link rel="stylesheet" href="css/grid.css">
     <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.2.5/angular.min.js"></script>
 <script src="js/grid.js"></script>
+     <script src="js/angulartimer.js"></script>
 </head>    
 <body>
     <div ng-app="ShaniquaApp" class="pure-g-r" ng-controller="GridController as grid"   id="layout">
@@ -18,10 +19,11 @@
                
             </hgroup>
             </header>
-             <h2 class="brand-tagline">Objectives:</h2><p/>
+             <h2 class="brand-tagline">Objectives:  <timer interval="1000">{{minutes}} : {{seconds}} </timer>
+            </h2><p/>
             <ul class="unstyled">
                 <li ng-repeat="objective in  grid.Objectives" class='completed-{{objective.completed}}'>
-                    {{objective.description}} <br/> {{objective.timer}}
+                    {{objective.description}} <br/>
                 </li>
             </ul>
       </div>

@@ -34,34 +34,25 @@ shuffle = (array)->
     array
 
     
-app = angular.module 'ShaniquaApp', []
+app = angular.module 'ShaniquaApp', ['timer']
 
 app.controller 'GridController',
     class GridController
-        @$inject: ['$interval'] 
+        @$inject: ['$interval','$scope'] 
         CurrentObjective:0
         Objectives:[]
         Grids : []
+        StopTimer:[]
         StageName: 'Shaniqua goes to the mall'
         size:19
         length:4
-        objectiveTimer:->
-            newTime={}
-            @Objectives[@CurrentObjective].timeinSeconds++
-            mins =@Objectives[@CurrentObjective].timeinSeconds%60
-            secondsRemainder =@Objectives[@CurrentObjective].timeinSeconds-(@Objectives[@CurrentObjective].timeinSeconds * mins)
-            if secondsRemainder< 10 
-               newTime = mins + ':0'+secondsRemainder
-            else 
-                newTime= mins + ':'+secondsRemainder
-            @Objectives[@CurrentObjective].timer= newTime
+        
             
         createObjectives:(@interval,@scope)->
             @Objectives.push new Objective point.name,point.description, point.failedMessage, point.id   for point in @Grids
             @Objectives[0].timer='0:00'
             @Objectives[0].timeinSeconds=-1
             @CurrentObjective=0
-            @interval @objectiveTimer, 1000
         createGridPoints : (@interval)->
             @Grids.push new GridPoint 'green','Shaniqua',  'Shaniqua is lost help find her', 'Hell no!', 20,  0
             @Grids.push new GridPoint 'blue',"Shaniqua's purse", 'Shaniqua lost her pruse help her find it', "That's not my purse!", 20, 1
@@ -83,12 +74,17 @@ app.controller 'GridController',
                 if @CurrentObjective isnt @Objectives.length
                     @Objectives[@CurrentObjective].timer='0:00'
                     @Objectives[@CurrentObjective].timeinSeconds=-1
-                else
-                    clearInterval()
-               
+                else 
+                    @StopTimer()
             else 
                 @Objectives[@CurrentObjective].timeinSeconds+=10
                 alert @Objectives[@CurrentObjective].failedMessage + ': 10 sec  added'
-        constructor: (@interval, @scope)->
+                @rootScope.$broadcast 'timer-add-time', 10 
+        constructor: (@interval,$scope)->
+            @rootScope=$scope
             @createGridPoints(@interval , @scope)
             currentController=this.Objectives
+            @StopTimer = ->  @rootScope.$broadcast('timer-stop');
+                
+                
+           
