@@ -5,7 +5,7 @@
 
 
 (function() {
-  var GridController, GridPoint, Objective, app, currentController, shuffle;
+  var DialogController, GridController, GridPoint, Objective, app, currentController, shuffle, speaker;
 
   currentController = {};
 
@@ -70,10 +70,8 @@
 
     GridController.prototype.length = 4;
 
-    GridController.prototype.createObjectives = function(interval, scope) {
+    GridController.prototype.createObjectives = function() {
       var point, _i, _len, _ref;
-      this.interval = interval;
-      this.scope = scope;
       _ref = this.Grids;
       for (_i = 0, _len = _ref.length; _i < _len; _i++) {
         point = _ref[_i];
@@ -84,13 +82,12 @@
       return this.CurrentObjective = 0;
     };
 
-    GridController.prototype.createGridPoints = function(interval) {
+    GridController.prototype.createGridPoints = function() {
       var i, nondummyItems, _i, _ref;
-      this.interval = interval;
-      this.Grids.push(new GridPoint('green', 'Shaniqua', 'Shaniqua is lost help find her', 'Hell no!', 20, 0));
-      this.Grids.push(new GridPoint('blue', "Shaniqua's purse", 'Shaniqua lost her pruse help her find it', "That's not my purse!", 20, 1));
-      this.Grids.push(new GridPoint('black', "Shaniqua's lipstick", 'Shaniqua is lost her lipstick help her find it', "That's not my lipstick!", 20, 2));
-      this.createObjectives(this.interval);
+      this.Grids.push(new GridPoint('green', 'Shaniqua', 'Shaniqua is lost help find her', 'Shaniqua', 20, 0));
+      this.Grids.push(new GridPoint('blue', "Shaniqua's purse", 'Shaniqua lost her pruse help her find it', "her purse!", 20, 1));
+      this.Grids.push(new GridPoint('black', "Shaniqua's lipstick", 'Shaniqua is lost her lipstick help her find it', "her lipstick!", 20, 2));
+      this.createObjectives();
       nondummyItems = this.Grids.length - 1;
       for (i = _i = nondummyItems, _ref = this.size; nondummyItems <= _ref ? _i < _ref : _i > _ref; i = nondummyItems <= _ref ? ++_i : --_i) {
         this.Grids.push(new GridPoint('red', '', '', '', 20, i));
@@ -106,17 +103,14 @@
       }
       if (found) {
         this.Objectives[this.CurrentObjective].completed = true;
-        alert('Found ' + this.Objectives[this.CurrentObjective].name);
+        this.rootScope.$parent.$broadcast('thank-you', this.Objectives[this.CurrentObjective].name);
         this.CurrentObjective++;
-        if (this.CurrentObjective !== this.Objectives.length) {
-          this.Objectives[this.CurrentObjective].timer = '0:00';
-          return this.Objectives[this.CurrentObjective].timeinSeconds = -1;
-        } else {
+        if (this.CurrentObjective === this.Objectives.length) {
           return this.StopTimer();
         }
       } else {
         this.Objectives[this.CurrentObjective].timeinSeconds += 10;
-        alert(this.Objectives[this.CurrentObjective].failedMessage + ': 10 sec  added');
+        this.rootScope.$parent.$broadcast('failed-to-find', this.Objectives[this.CurrentObjective].failedMessage);
         return this.rootScope.$broadcast('timer-add-time', 10);
       }
     };
@@ -124,14 +118,126 @@
     function GridController(interval, $scope) {
       this.interval = interval;
       this.rootScope = $scope;
-      this.createGridPoints(this.interval, this.scope);
       currentController = this.Objectives;
       this.StopTimer = function() {
-        return this.rootScope.$broadcast('timer-stop');
+        return this.rootScope.$parent.$broadcast('timer-stop');
       };
+      this.rootScope.$on('finished-conversation', function(event) {
+        return event.currentScope.grid.createGridPoints();
+      });
     }
 
     return GridController;
+
+  })());
+
+  /*
+     Dialog functionallity.
+  */
+
+
+  speaker = (function() {
+    function speaker(name, image, text) {
+      this.name = name;
+      this.image = image;
+      this.text = text;
+    }
+
+    return speaker;
+
+  })();
+
+  app.controller('DialogController', DialogController = (function() {
+    DialogController.prototype.CurrentDialog = [];
+
+    DialogController.prototype.CurrentDialogIndex = 0;
+
+    DialogController.prototype.Showing = false;
+
+    DialogController.prototype.Finished = false;
+
+    DialogController.prototype.IsGenericMessage = false;
+
+    DialogController.prototype.isRedMessage = false;
+
+    DialogController.prototype.isGreenMessage = false;
+
+    DialogController.prototype.Conversation = [];
+
+    DialogController.$inject = ['$interval', '$scope'];
+
+    DialogController.prototype.ThankYou = function(item) {
+      this.Conversation = [];
+      this.Conversation.push(new speaker('Alexis ', 'red', "You found " + item));
+      this.IsGenericMessage = true;
+      this.Showing = true;
+      this.isGreenMessage = true;
+      return this.CurrentDialog.push(this.Conversation[0]);
+    };
+
+    DialogController.prototype.Failed = function(item) {
+      this.Conversation = [];
+      this.Conversation.push(new speaker('Alexis ', 'red', "That is not " + item));
+      this.IsGenericMessage = true;
+      this.Showing = true;
+      this.isRedMessage = true;
+      return this.CurrentDialog.push(this.Conversation[0]);
+    };
+
+    DialogController.prototype.FinishConversating = function() {
+      this.rootScope.$parent.$broadcast('timer-start');
+      this.rootScope.$parent.$broadcast('finished-conversation');
+      return this.Showing = false;
+    };
+
+    DialogController.prototype.CreateConversation = function() {
+      this.Conversation.push(new speaker('Phone', 'red', "Ring Ring "));
+      this.Conversation.push(new speaker('Alexis', 'red', "Hello"));
+      this.Conversation.push(new speaker('Caller', 'red', "Is Shaniqua there?"));
+      this.Conversation.push(new speaker('Alexis', 'red', "No I think she is at the mall"));
+      return this.CurrentDialog.push(this.Conversation[0]);
+    };
+
+    DialogController.prototype.CreateFinishingConversation = function(time) {
+      this.Conversation = [];
+      this.Conversation.push(new speaker('Alexis ', 'red', "You Found her and her stuff in: " + time));
+      this.Finished = true;
+      this.Showing = true;
+      return this.CurrentDialog.push(this.Conversation[0]);
+    };
+
+    DialogController.prototype.NextDialog = function() {
+      this.CurrentDialogIndex++;
+      this.CurrentDialog.pop();
+      if (this.CurrentDialogIndex === this.Conversation.length && !this.Finished && !this.IsGenericMessage) {
+        this.FinishConversating();
+      } else if (!this.Finished && !this.IsGenericMessage) {
+        this.CurrentDialog.push(this.Conversation[this.CurrentDialogIndex]);
+      } else {
+        this.Showing = false;
+        this.IsThankYou = false;
+      }
+      this.isRedMessage = false;
+      return this.isGreenMessage = false;
+    };
+
+    function DialogController(interval, $scope) {
+      this.interval = interval;
+      this.rootScope = $scope;
+      this.CreateConversation();
+      this.Showing = true;
+      this.rootScope.$on('thank-you', function(event, item) {
+        return event.currentScope.dialog.ThankYou(item);
+      });
+      this.rootScope.$on('failed-to-find', function(event, item) {
+        return event.currentScope.dialog.Failed(item);
+      });
+      this.rootScope.$on('found-everything', function(event, time) {
+        return event.currentScope.dialog.CreateFinishingConversation(time);
+      });
+    }
+
+    return DialogController;
 
   })());
 

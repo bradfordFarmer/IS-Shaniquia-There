@@ -5,13 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Is Shaniquia there project for programming on the train.">
     <link rel="stylesheet" href="http://yui.yahooapis.com/pure/0.3.0/pure-min.css">
+     <link rel="stylesheet" href="css/modal.css">
      <link rel="stylesheet" href="css/grid.css">
     <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.2.5/angular.min.js"></script>
 <script src="js/grid.js"></script>
+    <script src="js/dialog.js"></script>
+     <script src="js/modal.js"></script>
      <script src="js/angulartimer.js"></script>
 </head>    
-<body>
-    <div ng-app="ShaniquaApp" class="pure-g-r" ng-controller="GridController as grid"   id="layout">
+<body ng-app="ShaniquaApp">
+    <div  class="pure-g-r" ng-controller="GridController as grid"   id="layout">
         <div class="sidebar pure-u">
         <header class="header">
             <hgroup>
@@ -19,7 +22,7 @@
                
             </hgroup>
             </header>
-             <h2 class="brand-tagline">Objectives:  <timer interval="1000">{{minutes}} : {{seconds}} </timer>
+             <h2 class="brand-tagline">Objectives:  <timer interval="1000" autostart="false">{{minutes}} : {{seconds}} </timer>
             </h2><p/>
             <ul class="unstyled">
                 <li ng-repeat="objective in  grid.Objectives" class='completed-{{objective.completed}}'>
@@ -33,6 +36,26 @@
             </div>
         </div>
             </div>
+       
+            
+            
+        </div>
+        <section id="modal-text" class="semantic-content Showing-{{dialog.Showing}}" aria-hidden="{{dialog.Showing}}" aria-labelledby="modal-label" role="dialog" tabindex="-1" ng-controller="DialogController as dialog" >
+             
+                 <div id="overlay-{{dialog.Showing}}" ng-click = "dialog.NextDialog()" ></div>
+                 <div class="modal-inner">
+                    <span  ng-repeat="conversation in  dialog.CurrentDialog" class='speaker' ng-click = "dialog.NextDialog()" > 
+                        <header>
+                            <h2 id="modal-label" > {{conversation.name}}</h2>
+                        </header>
+                        <div class="modal-content  red-{{dialog.isRedMessage}} green-{{dialog.isGreenMessage}}">
+                            <p>{{conversation.text}}</p>
+                        </div>
+                     </span>
+                </div>
+                 
+    
+        </section>
        <footer class="footer pure-u-1 ">
                 <div class="pure-menu pure-menu-horizontal pure-menu-open">
                     <ul>
@@ -42,6 +65,8 @@
                 </div>
             </footer>
     </div>   
+    
+
 </body>    
     
 
