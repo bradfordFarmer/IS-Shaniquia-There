@@ -1,0 +1,22 @@
+
+{
+    Stage: "Shaniquia goes to the mall",
+    gridSize: 20,
+    grid: [
+        {
+            image: 'Is Shaniquia There',
+            Objective : {
+                            name : 'name',
+                            description :'description',
+                            objectid : 'objectid',
+                            failedMessage:'failedMessage',
+                            completed:false,
+                        }
+            
+            
+        },
+        
+    
+    ]   
+    
+}
