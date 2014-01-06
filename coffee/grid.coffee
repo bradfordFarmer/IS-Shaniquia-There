@@ -12,15 +12,19 @@ class Objective
         
     
 class GridPoint
-    constructor: (image, name, description, failedMessage, size,pointid)->
+    constructor: (image, backImage,name, description, failedMessage, size,pointid)->
         @id = pointid
         @image= image
+        @backImage=backImage
         @size= size
         @name =name
         @description=description
         @failedMessage=failedMessage
         
-
+randomWrong = ->
+    indexes = [{ row:50, col:0} , {row:150,col:0}, {row:0, col:50}, {row:100,col:50}, {row:150,col:50}]
+    i= Math.floor Math.random()*5 
+    indexes[i];
 shuffle = (array)-> 
     currentIndex = array.length
     temporaryValue  ={}
@@ -43,21 +47,37 @@ app.controller 'GridController',
         Objectives:[]
         Grids : []
         StopTimer:[]
-        StageName: 'Shaniqua goes to the mall'
+        ForegroundImageName:'backgrounds.png'
+        BackgroundImageName:'items.png'
+        StageName: 'Shaniquia in the mall'
         size:19
+        spriteSheet:{
+            boxSize:50
+            squareLength:4
+        }
         length:4 
+        createForgrounds : ()-> 
+            foreground=[]
+            length =@spriteSheet.squareLength*@spriteSheet.squareLength
+            for i in [0...length]
+                row = i% @spriteSheet.squareLength
+                col =  i - (col*  @spriteSheet.squareLength)
+                foreground[i]= { row:row*50 , col:col*50}
+            shuffle(foreground)
+            
         createObjectives:()->
             @Objectives.push new Objective point.name,point.description, point.failedMessage, point.id   for point in @Grids
             @Objectives[0].timer='0:00'
             @Objectives[0].timeinSeconds=-1
             @CurrentObjective=0
         createGridPoints : ()->
-            @Grids.push new GridPoint 'green','Shaniqua',  'Shaniqua is lost help find her', 'Shaniqua', 20,  0
-            @Grids.push new GridPoint 'blue',"Shaniqua's purse", 'Shaniqua lost her pruse help her find it', "her purse!", 20, 1
-            @Grids.push new GridPoint 'black', "Shaniqua's lipstick",'Shaniqua is lost her lipstick help her find it', "her lipstick!",20,  2
+            foregrounds = @createForgrounds()
+            @Grids.push new GridPoint foregrounds[0], {row:0,  col:0},'Shaniqua',  'Shaniqua is lost help find her', 'Shaniqua', 20,  0
+            @Grids.push new GridPoint foregrounds[1],{row:50, col:50},"Shaniqua's purse", 'Shaniqua lost her pruse help her find it', "her purse!", 20, 1
+            @Grids.push new GridPoint foregrounds[2],{row:100,col:0}, "Shaniqua's lipstick",'Shaniqua is lost her lipstick help her find it', "her lipstick!",20,  2
             @createObjectives()
             nondummyItems =  @Grids.length-1
-            @Grids.push new GridPoint 'red', '','','', 20, i  for i in [nondummyItems...@size] 
+            @Grids.push new GridPoint foregrounds[1], randomWrong(), '','','', 20, i  for i in [nondummyItems...@size] 
             shuffle(@Grids)
             
         checkGridPoint: (point)-> 

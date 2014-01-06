@@ -5,7 +5,7 @@
 
 
 (function() {
-  var DialogController, GridController, GridPoint, Objective, app, currentController, shuffle, speaker;
+  var DialogController, GridController, GridPoint, Objective, app, currentController, randomWrong, shuffle, speaker;
 
   currentController = {};
 
@@ -23,9 +23,10 @@
   })();
 
   GridPoint = (function() {
-    function GridPoint(image, name, description, failedMessage, size, pointid) {
+    function GridPoint(image, backImage, name, description, failedMessage, size, pointid) {
       this.id = pointid;
       this.image = image;
+      this.backImage = backImage;
       this.size = size;
       this.name = name;
       this.description = description;
@@ -35,6 +36,30 @@
     return GridPoint;
 
   })();
+
+  randomWrong = function() {
+    var i, indexes;
+    indexes = [
+      {
+        row: 50,
+        col: 0
+      }, {
+        row: 150,
+        col: 0
+      }, {
+        row: 0,
+        col: 50
+      }, {
+        row: 100,
+        col: 50
+      }, {
+        row: 150,
+        col: 50
+      }
+    ];
+    i = Math.floor(Math.random() * 5);
+    return indexes[i];
+  };
 
   shuffle = function(array) {
     var currentIndex, randomIndex, temporaryValue;
@@ -64,11 +89,35 @@
 
     GridController.prototype.StopTimer = [];
 
-    GridController.prototype.StageName = 'Shaniqua goes to the mall';
+    GridController.prototype.ForegroundImageName = 'backgrounds.png';
+
+    GridController.prototype.BackgroundImageName = 'items.png';
+
+    GridController.prototype.StageName = 'Shaniquia in the mall';
 
     GridController.prototype.size = 19;
 
+    GridController.prototype.spriteSheet = {
+      boxSize: 50,
+      squareLength: 4
+    };
+
     GridController.prototype.length = 4;
+
+    GridController.prototype.createForgrounds = function() {
+      var col, foreground, i, length, row, _i;
+      foreground = [];
+      length = this.spriteSheet.squareLength * this.spriteSheet.squareLength;
+      for (i = _i = 0; 0 <= length ? _i < length : _i > length; i = 0 <= length ? ++_i : --_i) {
+        row = i % this.spriteSheet.squareLength;
+        col = i - (col * this.spriteSheet.squareLength);
+        foreground[i] = {
+          row: row * 50,
+          col: col * 50
+        };
+      }
+      return shuffle(foreground);
+    };
 
     GridController.prototype.createObjectives = function() {
       var point, _i, _len, _ref;
@@ -83,14 +132,24 @@
     };
 
     GridController.prototype.createGridPoints = function() {
-      var i, nondummyItems, _i, _ref;
-      this.Grids.push(new GridPoint('green', 'Shaniqua', 'Shaniqua is lost help find her', 'Shaniqua', 20, 0));
-      this.Grids.push(new GridPoint('blue', "Shaniqua's purse", 'Shaniqua lost her pruse help her find it', "her purse!", 20, 1));
-      this.Grids.push(new GridPoint('black', "Shaniqua's lipstick", 'Shaniqua is lost her lipstick help her find it', "her lipstick!", 20, 2));
+      var foregrounds, i, nondummyItems, _i, _ref;
+      foregrounds = this.createForgrounds();
+      this.Grids.push(new GridPoint(foregrounds[0], {
+        row: 0,
+        col: 0
+      }, 'Shaniqua', 'Shaniqua is lost help find her', 'Shaniqua', 20, 0));
+      this.Grids.push(new GridPoint(foregrounds[1], {
+        row: 50,
+        col: 50
+      }, "Shaniqua's purse", 'Shaniqua lost her pruse help her find it', "her purse!", 20, 1));
+      this.Grids.push(new GridPoint(foregrounds[2], {
+        row: 100,
+        col: 0
+      }, "Shaniqua's lipstick", 'Shaniqua is lost her lipstick help her find it', "her lipstick!", 20, 2));
       this.createObjectives();
       nondummyItems = this.Grids.length - 1;
       for (i = _i = nondummyItems, _ref = this.size; nondummyItems <= _ref ? _i < _ref : _i > _ref; i = nondummyItems <= _ref ? ++_i : --_i) {
-        this.Grids.push(new GridPoint('red', '', '', '', 20, i));
+        this.Grids.push(new GridPoint(foregrounds[1], randomWrong(), '', '', '', 20, i));
       }
       return shuffle(this.Grids);
     };
