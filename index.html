@@ -13,8 +13,29 @@
      <script src="js/modal.js"></script>
      <script src="js/angulartimer.js"></script>
 </head>    
-<body ng-app="ShaniquaApp">
-    <div  class="pure-g-r" ng-controller="GridController as grid"   id="layout">
+<body ng-app="ShaniquaApp" >
+    
+    
+    <div  class="pure-g-r Showing-{{level.Showing}}" ng-controller="LevelController as levels"   id="layout">
+         <div class="sidebar pure-u">
+               <hgroup>
+                    Is Shaniquia there? 
+                    <p/>
+                    Select your stage
+                </hgroup>
+                     <div class="pure-u-1 content" >
+                         <ul class="unstyled">
+                             <li ng-repeat="stage in levels.stages">
+                             <span ng-style ="levels.getStageStyle(stage)" ></span>
+                                 <br/> 
+                                 {{stage.name}}
+                             </li>
+                        </ul> 
+                    </div>
+             </div>
+    </div>
+    
+    <div  class="pure-g-r Showing-{{grid.Showing}}" ng-controller="GridController as grid"   id="layout">
         <div class="sidebar pure-u">
         <header class="header">
             <hgroup>
@@ -26,13 +47,14 @@
             </h2><p/>
             <ul class="unstyled">
                 <li ng-repeat="objective in  grid.Objectives" class='completed-{{objective.completed}}'>
-                    {{objective.description}} <br/>
+                    {{objective.description}}  <span ng-style ="grid.getObjectiveStyle(objective)" ></span> <br/>
                 </li>
             </ul>
       </div>
         <div class="pure-u-1 content" >
             <div class="content">
-            <div class ="gridPoint" style ="width: {{point.size}}%;   padding-bottom: {{point.size}}%; background-color: {{point.image}}"  ng-repeat="point in grid.Grids" ng-click = "grid.checkGridPoint(point)" >
+            <div class ="gridPoint" ng-style ="grid.getBackgroundStyle(point)"  ng-repeat="point in grid.Grids" ng-click = "grid.checkGridPoint(point)" >
+                <div ng-style ="grid.getForegroundStyle(point)" ></div>
             </div>
         </div>
             </div>

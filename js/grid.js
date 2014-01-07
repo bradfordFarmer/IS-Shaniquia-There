@@ -10,12 +10,13 @@
   currentController = {};
 
   Objective = (function() {
-    function Objective(name, description, failedMessage, pointid) {
+    function Objective(name, description, failedMessage, pointid, image) {
       this.name = name;
       this.description = description;
       this.pointid = pointid;
       this.failedMessage = failedMessage;
       this.completed = false;
+      this.image = image;
     }
 
     return Objective;
@@ -95,7 +96,7 @@
 
     GridController.prototype.StageName = 'Shaniquia in the mall';
 
-    GridController.prototype.size = 19;
+    GridController.prototype.size = 16;
 
     GridController.prototype.spriteSheet = {
       boxSize: 50,
@@ -104,13 +105,43 @@
 
     GridController.prototype.length = 4;
 
-    GridController.prototype.createForgrounds = function() {
+    GridController.prototype.getObjectiveStyle = function(objective) {
+      return {
+        'width': '50px',
+        'height': '50px',
+        'background-image': 'url("images/items.png")',
+        'background-repeat': 'no-repeat',
+        'background-position': -objective.image.row + 'px ' + -objective.image.col + 'px'
+      };
+    };
+
+    GridController.prototype.getBackgroundStyle = function(point) {
+      return {
+        'width': '50px',
+        'height': '50px',
+        'background-image': 'url("images/items.png")',
+        'background-repeat': 'no-repeat',
+        'background-position': -point.backImage.row + 'px ' + -point.backImage.col + 'px'
+      };
+    };
+
+    GridController.prototype.getForegroundStyle = function(point) {
+      return {
+        'width': '50px',
+        'height': '50px',
+        'background-image': 'url("images/backgrounds.png") ',
+        'background-repeat': 'no-repeat',
+        'background-position': -point.image.row + 'px ' + -point.image.col + 'px'
+      };
+    };
+
+    GridController.prototype.createForegrounds = function() {
       var col, foreground, i, length, row, _i;
       foreground = [];
       length = this.spriteSheet.squareLength * this.spriteSheet.squareLength;
       for (i = _i = 0; 0 <= length ? _i < length : _i > length; i = 0 <= length ? ++_i : --_i) {
         row = i % this.spriteSheet.squareLength;
-        col = i - (col * this.spriteSheet.squareLength);
+        col = Math.floor(i / this.spriteSheet.squareLength);
         foreground[i] = {
           row: row * 50,
           col: col * 50
@@ -124,7 +155,7 @@
       _ref = this.Grids;
       for (_i = 0, _len = _ref.length; _i < _len; _i++) {
         point = _ref[_i];
-        this.Objectives.push(new Objective(point.name, point.description, point.failedMessage, point.id));
+        this.Objectives.push(new Objective(point.name, point.description, point.failedMessage, point.id, point.backImage));
       }
       this.Objectives[0].timer = '0:00';
       this.Objectives[0].timeinSeconds = -1;
@@ -133,7 +164,7 @@
 
     GridController.prototype.createGridPoints = function() {
       var foregrounds, i, nondummyItems, _i, _ref;
-      foregrounds = this.createForgrounds();
+      foregrounds = this.createForegrounds();
       this.Grids.push(new GridPoint(foregrounds[0], {
         row: 0,
         col: 0
@@ -149,7 +180,7 @@
       this.createObjectives();
       nondummyItems = this.Grids.length - 1;
       for (i = _i = nondummyItems, _ref = this.size; nondummyItems <= _ref ? _i < _ref : _i > _ref; i = nondummyItems <= _ref ? ++_i : --_i) {
-        this.Grids.push(new GridPoint(foregrounds[1], randomWrong(), '', '', '', 20, i));
+        this.Grids.push(new GridPoint(foregrounds[i], randomWrong(), '', '', '', 20, i));
       }
       return shuffle(this.Grids);
     };
@@ -215,7 +246,7 @@
 
     DialogController.prototype.Finished = false;
 
-    DialogController.prototype.IsGenericMessage = false;
+    DialogController.prototype.isGenericMessage = false;
 
     DialogController.prototype.isRedMessage = false;
 
@@ -228,7 +259,7 @@
     DialogController.prototype.ThankYou = function(item) {
       this.Conversation = [];
       this.Conversation.push(new speaker('Alexis ', 'red', "You found " + item));
-      this.IsGenericMessage = true;
+      this.isGenericMessage = true;
       this.Showing = true;
       this.isGreenMessage = true;
       return this.CurrentDialog.push(this.Conversation[0]);
@@ -237,7 +268,7 @@
     DialogController.prototype.Failed = function(item) {
       this.Conversation = [];
       this.Conversation.push(new speaker('Alexis ', 'red', "That is not " + item));
-      this.IsGenericMessage = true;
+      this.isGenericMessage = true;
       this.Showing = true;
       this.isRedMessage = true;
       return this.CurrentDialog.push(this.Conversation[0]);
@@ -254,7 +285,8 @@
       this.Conversation.push(new speaker('Alexis', 'red', "Hello"));
       this.Conversation.push(new speaker('Caller', 'red', "Is Shaniqua there?"));
       this.Conversation.push(new speaker('Alexis', 'red', "No I think she is at the mall"));
-      return this.CurrentDialog.push(this.Conversation[0]);
+      this.CurrentDialog.push(this.Conversation[0]);
+      return this.Showing = true;
     };
 
     DialogController.prototype.CreateFinishingConversation = function(time) {
@@ -268,13 +300,12 @@
     DialogController.prototype.NextDialog = function() {
       this.CurrentDialogIndex++;
       this.CurrentDialog.pop();
-      if (this.CurrentDialogIndex === this.Conversation.length && !this.Finished && !this.IsGenericMessage) {
+      if (this.CurrentDialogIndex === this.Conversation.length && !this.Finished && !this.isGenericMessage) {
         this.FinishConversating();
-      } else if (!this.Finished && !this.IsGenericMessage) {
+      } else if (!this.Finished && !this.isGenericMessage) {
         this.CurrentDialog.push(this.Conversation[this.CurrentDialogIndex]);
       } else {
         this.Showing = false;
-        this.IsThankYou = false;
       }
       this.isRedMessage = false;
       return this.isGreenMessage = false;
@@ -284,7 +315,6 @@
       this.interval = interval;
       this.rootScope = $scope;
       this.CreateConversation();
-      this.Showing = true;
       this.rootScope.$on('thank-you', function(event, item) {
         return event.currentScope.dialog.ThankYou(item);
       });

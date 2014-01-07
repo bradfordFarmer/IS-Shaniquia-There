@@ -3,12 +3,13 @@
 ###
 currentController ={}
 class Objective
-    constructor:(name,description, failedMessage, pointid) ->
+    constructor:(name,description, failedMessage, pointid,image) ->
         @name = name
         @description =description
         @pointid = pointid
         @failedMessage=failedMessage
         @completed=false
+        @image = image
         
     
 class GridPoint
@@ -50,34 +51,63 @@ app.controller 'GridController',
         ForegroundImageName:'backgrounds.png'
         BackgroundImageName:'items.png'
         StageName: 'Shaniquia in the mall'
-        size:19
+        size:16
         spriteSheet:{
             boxSize:50
             squareLength:4
         }
         length:4 
-        createForgrounds : ()-> 
+        getObjectiveStyle:(objective)->
+           { 
+                'width':'50px'
+                'height':'50px'
+                'background-image': 'url("images/items.png")'
+                'background-repeat':'no-repeat'
+                'background-position' :-objective.image.row+'px '+  -objective.image.col+'px'
+            } 
+    
+        getBackgroundStyle:(point)->
+            { 
+                'width':'50px'
+                'height':'50px'
+                'background-image': 'url("images/items.png")'
+                'background-repeat':'no-repeat'
+                'background-position' :-point.backImage.row+'px '+  -point.backImage.col+'px'
+            }
+           
+        
+        getForegroundStyle:(point)->
+            {
+                'width':'50px'
+                'height':'50px'
+                'background-image': 'url("images/backgrounds.png") '
+                'background-repeat':'no-repeat'
+                'background-position' : -point.image.row+'px '+  -point.image.col+'px'
+            }
+         
+
+        createForegrounds : ()-> 
             foreground=[]
             length =@spriteSheet.squareLength*@spriteSheet.squareLength
             for i in [0...length]
                 row = i% @spriteSheet.squareLength
-                col =  i - (col*  @spriteSheet.squareLength)
+                col = Math.floor(i/@spriteSheet.squareLength)
                 foreground[i]= { row:row*50 , col:col*50}
             shuffle(foreground)
             
         createObjectives:()->
-            @Objectives.push new Objective point.name,point.description, point.failedMessage, point.id   for point in @Grids
+            @Objectives.push new Objective point.name,point.description, point.failedMessage, point.id, point.backImage   for point in @Grids
             @Objectives[0].timer='0:00'
             @Objectives[0].timeinSeconds=-1
             @CurrentObjective=0
         createGridPoints : ()->
-            foregrounds = @createForgrounds()
+            foregrounds = @createForegrounds()
             @Grids.push new GridPoint foregrounds[0], {row:0,  col:0},'Shaniqua',  'Shaniqua is lost help find her', 'Shaniqua', 20,  0
             @Grids.push new GridPoint foregrounds[1],{row:50, col:50},"Shaniqua's purse", 'Shaniqua lost her pruse help her find it', "her purse!", 20, 1
             @Grids.push new GridPoint foregrounds[2],{row:100,col:0}, "Shaniqua's lipstick",'Shaniqua is lost her lipstick help her find it', "her lipstick!",20,  2
             @createObjectives()
             nondummyItems =  @Grids.length-1
-            @Grids.push new GridPoint foregrounds[1], randomWrong(), '','','', 20, i  for i in [nondummyItems...@size] 
+            @Grids.push new GridPoint foregrounds[i], randomWrong(), '','','', 20, i  for i in [nondummyItems...@size] 
             shuffle(@Grids)
             
         checkGridPoint: (point)-> 
@@ -100,9 +130,7 @@ app.controller 'GridController',
             currentController=this.Objectives
             @StopTimer = ->  @rootScope.$parent.$broadcast 'timer-stop';
             @rootScope.$on 'finished-conversation' , (event)->
-                event.currentScope.grid.createGridPoints()
-
-                
+                event.currentScope.grid.createGridPoints() 
 ###
    Dialog functionallity.
 ###                
@@ -118,7 +146,7 @@ app.controller 'DialogController',
         CurrentDialogIndex:0
         Showing: false
         Finished : false
-        IsGenericMessage : false
+        isGenericMessage : false
         isRedMessage : false
         isGreenMessage : false
         Conversation : []
@@ -126,14 +154,14 @@ app.controller 'DialogController',
         ThankYou : (item)->
             @Conversation=[];
             @Conversation.push(new speaker('Alexis ', 'red', "You found " + item )) 
-            @IsGenericMessage=true
+            @isGenericMessage=true
             @Showing=true 
             @isGreenMessage=true
             @CurrentDialog.push @Conversation[0]
         Failed : (item)->
             @Conversation=[];
             @Conversation.push(new speaker('Alexis ', 'red', "That is not " + item )) 
-            @IsGenericMessage=true
+            @isGenericMessage=true
             @Showing=true 
             @isRedMessage=true
             @CurrentDialog.push @Conversation[0]
@@ -147,6 +175,7 @@ app.controller 'DialogController',
             @Conversation.push(new speaker('Caller', 'red', "Is Shaniqua there?")) 
             @Conversation.push(new speaker('Alexis', 'red', "No I think she is at the mall")) 
             @CurrentDialog.push(@Conversation[0]);
+            @Showing=true
         CreateFinishingConversation : (time)->
             @Conversation=[];
             @Conversation.push(new speaker('Alexis ', 'red', "You Found her and her stuff in: "+time )) 
@@ -156,19 +185,17 @@ app.controller 'DialogController',
         NextDialog:->
             @CurrentDialogIndex++ 
             @CurrentDialog.pop()
-            if @CurrentDialogIndex is @Conversation.length and not @Finished  and not @IsGenericMessage
+            if @CurrentDialogIndex is @Conversation.length and not @Finished  and not @isGenericMessage
                 @FinishConversating();
-            else if not @Finished and not @IsGenericMessage
+            else if not @Finished and not @isGenericMessage
                 @CurrentDialog.push(@Conversation[@CurrentDialogIndex])
             else 
                 @Showing=false
-                @IsThankYou=false
             @isRedMessage=false
             @isGreenMessage=false
         constructor:(@interval,$scope)->
             @rootScope=$scope
-            @CreateConversation()
-            @Showing=true
+            @CreateConversation() 
             @rootScope.$on 'thank-you' , (event,item)->
                 event.currentScope.dialog.ThankYou(item)
             @rootScope.$on 'failed-to-find' , (event,item)->
