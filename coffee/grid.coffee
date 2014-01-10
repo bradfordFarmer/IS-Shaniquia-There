@@ -1,7 +1,81 @@
 ###
     The Objectives are mearly a sub set of important infomation from the grid this is done to allow for caching and faster look up on the browser side because it is        faster to look up 5-10 objectives than it is to loop over 100+ grid points.
 ###
+### 
+    app setup
+###
+app = angular.module 'ShaniquaApp', ['timer']
 currentController ={}
+
+### 
+    general Math functions
+###
+randomWrong = ->
+    indexes = [{ row:50, col:0} , {row:150,col:0}, {row:0, col:50}, {row:100,col:50}, {row:150,col:50}]
+    i= Math.floor Math.random()*5 
+    indexes[i];
+shuffle = (array)-> 
+    currentIndex = array.length
+    temporaryValue  ={}
+    randomIndex =0 
+    while 0 isnt currentIndex
+        randomIndex = Math.floor(Math.random() * currentIndex)
+        currentIndex -= 1
+        temporaryValue = array[currentIndex]
+        array[currentIndex] = array[randomIndex]
+        array[randomIndex] = temporaryValue
+    array
+
+
+    
+### 
+    httpFactories
+###
+
+app.factory 'LevelLoader' , ($http,$rootScope)->
+    {
+        getLevels : (url,scope)->
+            $rootScope.$broadcast 'show-loading-screen' , 1
+            $http.get(url)
+    }
+###
+   Level functionallity.
+###   
+app.controller 'LevelController',
+    class LevelController
+        @$inject: ['$interval','$scope' ,'LevelLoader'] 
+        levels : [{'none':'found'}]
+        loadLevel:(levelurl)->
+             scope= @rootScope
+            @LevelLoader.getLevels(levelurl ,scope).
+                success( (data, status)->
+                    scope.$parent.$broadcast 'level-downloaded' , data
+                    scope.$parent.$broadcast 'remove-loading-screen' , 1
+                ).
+                error( (data, status)->
+                    alert 'error'
+                )
+                
+        getLevelList: (scope,levels)->
+            @rootScope.$parent.$broadcast 'show-loading-screen' , 1
+            @LevelLoader.getLevels('levels/levellist.json', @scope).
+                success( (data, status)->
+                    levels=data
+                    scope.$parent.$broadcast 'remove-loading-screen' , 1
+                ).
+                error( (data, status)->
+                    alert 'error'
+                )
+            
+        constructor: (@interval,$scope,@LevelLoader)->
+            @rootScope = $scope
+            @getLevelList($scope, @levels)
+            
+
+###
+    The grid Controller
+###
+
 class Objective
     constructor:(name,description, failedMessage, pointid,image) ->
         @name = name
@@ -21,25 +95,7 @@ class GridPoint
         @name =name
         @description=description
         @failedMessage=failedMessage
-        
-randomWrong = ->
-    indexes = [{ row:50, col:0} , {row:150,col:0}, {row:0, col:50}, {row:100,col:50}, {row:150,col:50}]
-    i= Math.floor Math.random()*5 
-    indexes[i];
-shuffle = (array)-> 
-    currentIndex = array.length
-    temporaryValue  ={}
-    randomIndex =0 
-    while 0 isnt currentIndex
-        randomIndex = Math.floor(Math.random() * currentIndex)
-        currentIndex -= 1
-        temporaryValue = array[currentIndex]
-        array[currentIndex] = array[randomIndex]
-        array[randomIndex] = temporaryValue
-    array
-
     
-app = angular.module 'ShaniquaApp', ['timer']
 
 app.controller 'GridController',
     class GridController
@@ -51,7 +107,7 @@ app.controller 'GridController',
         ForegroundImageName:'backgrounds.png'
         BackgroundImageName:'items.png'
         StageName: 'Shaniquia in the mall'
-        size:16
+        size:100
         spriteSheet:{
             boxSize:50
             squareLength:4
@@ -86,13 +142,19 @@ app.controller 'GridController',
             }
          
 
-        createForegrounds : ()-> 
+        createForegrounds : (size)-> 
             foreground=[]
             length =@spriteSheet.squareLength*@spriteSheet.squareLength
-            for i in [0...length]
-                row = i% @spriteSheet.squareLength
-                col = Math.floor(i/@spriteSheet.squareLength)
+            j=0
+            for i in [0...size]
+                
+                row = j% @spriteSheet.squareLength
+                col = Math.floor(j/@spriteSheet.squareLength)
                 foreground[i]= { row:row*50 , col:col*50}
+                j++;
+                if j is length 
+                    j= 0
+
             shuffle(foreground)
             
         createObjectives:()->
@@ -101,7 +163,7 @@ app.controller 'GridController',
             @Objectives[0].timeinSeconds=-1
             @CurrentObjective=0
         createGridPoints : ()->
-            foregrounds = @createForegrounds()
+            foregrounds = @createForegrounds(@size)
             @Grids.push new GridPoint foregrounds[0], {row:0,  col:0},'Shaniqua',  'Shaniqua is lost help find her', 'Shaniqua', 20,  0
             @Grids.push new GridPoint foregrounds[1],{row:50, col:50},"Shaniqua's purse", 'Shaniqua lost her pruse help her find it', "her purse!", 20, 1
             @Grids.push new GridPoint foregrounds[2],{row:100,col:0}, "Shaniqua's lipstick",'Shaniqua is lost her lipstick help her find it', "her lipstick!",20,  2
@@ -195,7 +257,8 @@ app.controller 'DialogController',
             @isGreenMessage=false
         constructor:(@interval,$scope)->
             @rootScope=$scope
-            @CreateConversation() 
+            @rootScope.$on 'level-downloaded' , (event,item)->
+                 event.currentScope.dialog.CreateConversation() 
             @rootScope.$on 'thank-you' , (event,item)->
                 event.currentScope.dialog.ThankYou(item)
             @rootScope.$on 'failed-to-find' , (event,item)->

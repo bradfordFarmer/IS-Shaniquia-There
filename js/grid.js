@@ -4,39 +4,22 @@
 */
 
 
+/* 
+    app setup
+*/
+
+
 (function() {
-  var DialogController, GridController, GridPoint, Objective, app, currentController, randomWrong, shuffle, speaker;
+  var DialogController, GridController, GridPoint, LevelController, Objective, app, currentController, randomWrong, shuffle, speaker;
+
+  app = angular.module('ShaniquaApp', ['timer']);
 
   currentController = {};
 
-  Objective = (function() {
-    function Objective(name, description, failedMessage, pointid, image) {
-      this.name = name;
-      this.description = description;
-      this.pointid = pointid;
-      this.failedMessage = failedMessage;
-      this.completed = false;
-      this.image = image;
-    }
+  /* 
+      general Math functions
+  */
 
-    return Objective;
-
-  })();
-
-  GridPoint = (function() {
-    function GridPoint(image, backImage, name, description, failedMessage, size, pointid) {
-      this.id = pointid;
-      this.image = image;
-      this.backImage = backImage;
-      this.size = size;
-      this.name = name;
-      this.description = description;
-      this.failedMessage = failedMessage;
-    }
-
-    return GridPoint;
-
-  })();
 
   randomWrong = function() {
     var i, indexes;
@@ -77,7 +60,100 @@
     return array;
   };
 
-  app = angular.module('ShaniquaApp', ['timer']);
+  /* 
+      httpFactories
+  */
+
+
+  app.factory('LevelLoader', function($http, $rootScope) {
+    return {
+      getLevels: function(url, scope) {
+        $rootScope.$broadcast('show-loading-screen', 1);
+        return $http.get(url);
+      }
+    };
+  });
+
+  /*
+     Level functionallity.
+  */
+
+
+  app.controller('LevelController', LevelController = (function() {
+    LevelController.$inject = ['$interval', '$scope', 'LevelLoader'];
+
+    LevelController.prototype.levels = [
+      {
+        'none': 'found'
+      }
+    ];
+
+    LevelController.prototype.loadLevel = function(levelurl) {
+      var scope;
+      return scope = this.rootScope;
+    };
+
+    LevelController.LevelLoader.getLevels(levelurl, scope).success(function(data, status) {
+      scope.$parent.$broadcast('level-downloaded', data);
+      return scope.$parent.$broadcast('remove-loading-screen', 1);
+    }).error(function(data, status) {
+      return alert('error');
+    });
+
+    LevelController.prototype.getLevelList = function(scope, levels) {
+      this.rootScope.$parent.$broadcast('show-loading-screen', 1);
+      return this.LevelLoader.getLevels('levels/levellist.json', this.scope).success(function(data, status) {
+        levels = data;
+        return scope.$parent.$broadcast('remove-loading-screen', 1);
+      }).error(function(data, status) {
+        return alert('error');
+      });
+    };
+
+    function LevelController(interval, $scope, LevelLoader) {
+      this.interval = interval;
+      this.LevelLoader = LevelLoader;
+      this.rootScope = $scope;
+      this.getLevelList($scope, this.levels);
+    }
+
+    return LevelController;
+
+  })());
+
+  /*
+      The grid Controller
+  */
+
+
+  Objective = (function() {
+    function Objective(name, description, failedMessage, pointid, image) {
+      this.name = name;
+      this.description = description;
+      this.pointid = pointid;
+      this.failedMessage = failedMessage;
+      this.completed = false;
+      this.image = image;
+    }
+
+    return Objective;
+
+  })();
+
+  GridPoint = (function() {
+    function GridPoint(image, backImage, name, description, failedMessage, size, pointid) {
+      this.id = pointid;
+      this.image = image;
+      this.backImage = backImage;
+      this.size = size;
+      this.name = name;
+      this.description = description;
+      this.failedMessage = failedMessage;
+    }
+
+    return GridPoint;
+
+  })();
 
   app.controller('GridController', GridController = (function() {
     GridController.$inject = ['$interval', '$scope'];
@@ -96,7 +172,7 @@
 
     GridController.prototype.StageName = 'Shaniquia in the mall';
 
-    GridController.prototype.size = 16;
+    GridController.prototype.size = 100;
 
     GridController.prototype.spriteSheet = {
       boxSize: 50,
@@ -135,17 +211,22 @@
       };
     };
 
-    GridController.prototype.createForegrounds = function() {
-      var col, foreground, i, length, row, _i;
+    GridController.prototype.createForegrounds = function(size) {
+      var col, foreground, i, j, length, row, _i;
       foreground = [];
       length = this.spriteSheet.squareLength * this.spriteSheet.squareLength;
-      for (i = _i = 0; 0 <= length ? _i < length : _i > length; i = 0 <= length ? ++_i : --_i) {
-        row = i % this.spriteSheet.squareLength;
-        col = Math.floor(i / this.spriteSheet.squareLength);
+      j = 0;
+      for (i = _i = 0; 0 <= size ? _i < size : _i > size; i = 0 <= size ? ++_i : --_i) {
+        row = j % this.spriteSheet.squareLength;
+        col = Math.floor(j / this.spriteSheet.squareLength);
         foreground[i] = {
           row: row * 50,
           col: col * 50
         };
+        j++;
+        if (j === length) {
+          j = 0;
+        }
       }
       return shuffle(foreground);
     };
@@ -164,7 +245,7 @@
 
     GridController.prototype.createGridPoints = function() {
       var foregrounds, i, nondummyItems, _i, _ref;
-      foregrounds = this.createForegrounds();
+      foregrounds = this.createForegrounds(this.size);
       this.Grids.push(new GridPoint(foregrounds[0], {
         row: 0,
         col: 0
@@ -314,7 +395,9 @@
     function DialogController(interval, $scope) {
       this.interval = interval;
       this.rootScope = $scope;
-      this.CreateConversation();
+      this.rootScope.$on('level-downloaded', function(event, item) {
+        return event.currentScope.dialog.CreateConversation();
+      });
       this.rootScope.$on('thank-you', function(event, item) {
         return event.currentScope.dialog.ThankYou(item);
       });
