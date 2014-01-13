@@ -160,3 +160,15 @@ a:focus {
     
     
 }
+
+.App { 
+  min-height:768px;
+  height:100%;   
+}
+.Showing-false{
+ display:none;
+}
+
+.Showing-true{
+ display:block;
+}

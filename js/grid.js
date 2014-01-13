@@ -82,39 +82,65 @@
   app.controller('LevelController', LevelController = (function() {
     LevelController.$inject = ['$interval', '$scope', 'LevelLoader'];
 
-    LevelController.prototype.levels = [
+    LevelController.prototype.stages = [
       {
         'none': 'found'
       }
     ];
 
+    LevelController.prototype.LevelLoader = {};
+
+    LevelController.prototype.Showing = false;
+
     LevelController.prototype.loadLevel = function(levelurl) {
       var scope;
-      return scope = this.rootScope;
-    };
-
-    LevelController.LevelLoader.getLevels(levelurl, scope).success(function(data, status) {
-      scope.$parent.$broadcast('level-downloaded', data);
-      return scope.$parent.$broadcast('remove-loading-screen', 1);
-    }).error(function(data, status) {
-      return alert('error');
-    });
-
-    LevelController.prototype.getLevelList = function(scope, levels) {
-      this.rootScope.$parent.$broadcast('show-loading-screen', 1);
-      return this.LevelLoader.getLevels('levels/levellist.json', this.scope).success(function(data, status) {
-        levels = data;
+      scope = this.rootScope;
+      this.Showing = false;
+      return this.LevelLoader.getLevels(levelurl, scope).success(function(data, status) {
+        scope.$parent.$broadcast('level-downloaded', data);
         return scope.$parent.$broadcast('remove-loading-screen', 1);
       }).error(function(data, status) {
         return alert('error');
       });
     };
 
+    LevelController.prototype.getSpeakerList = function(scope) {
+      return this.LevelLoader.getLevels('json/characters.json', scope).success(function(data, status) {
+        return scope.$parent.$broadcast('speakers-downloaded', data);
+      }).error(function(data, status) {
+        return alert('error');
+      });
+    };
+
+    LevelController.prototype.getLevelList = function(scope, stages, showing) {
+      this.stages = stages;
+      this.rootScope.$parent.$broadcast('show-loading-screen', 1);
+      return this.LevelLoader.getLevels('levels/levellist.json', scope).success(function(data, status) {
+        scope.$parent.$broadcast('level-list-downloaded', data);
+        return scope.$parent.$broadcast('remove-loading-screen', 1);
+      }).error(function(data, status) {
+        return alert('error');
+      });
+    };
+
+    LevelController.prototype.getBackgroundStyle = function(image) {
+      return {
+        'width': '200px',
+        'height': '200px',
+        'background-image': 'url(' + image + ')'
+      };
+    };
+
     function LevelController(interval, $scope, LevelLoader) {
       this.interval = interval;
       this.LevelLoader = LevelLoader;
       this.rootScope = $scope;
-      this.getLevelList($scope, this.levels);
+      this.rootScope.$on('level-list-downloaded', function(event, data) {
+        event.currentScope.levels.Showing = true;
+        return event.currentScope.levels.stages = data;
+      });
+      this.getSpeakerList($scope);
+      this.getLevelList($scope, this.stages, this.Showing);
     }
 
     return LevelController;
@@ -130,9 +156,8 @@
     function Objective(name, description, failedMessage, pointid, image) {
       this.name = name;
       this.description = description;
-      this.pointid = pointid;
       this.failedMessage = failedMessage;
-      this.completed = false;
+      this.pointid = pointid;
       this.image = image;
     }
 
@@ -141,14 +166,15 @@
   })();
 
   GridPoint = (function() {
-    function GridPoint(image, backImage, name, description, failedMessage, size, pointid) {
-      this.id = pointid;
+    function GridPoint(image, backImage, name, description, failedMessage, size, pointid, PrimaryObjective) {
       this.image = image;
       this.backImage = backImage;
-      this.size = size;
       this.name = name;
       this.description = description;
       this.failedMessage = failedMessage;
+      this.size = size;
+      this.pointid = pointid;
+      this.PrimaryObjective = PrimaryObjective;
     }
 
     return GridPoint;
@@ -166,26 +192,13 @@
 
     GridController.prototype.StopTimer = [];
 
-    GridController.prototype.ForegroundImageName = 'backgrounds.png';
-
-    GridController.prototype.BackgroundImageName = 'items.png';
-
-    GridController.prototype.StageName = 'Shaniquia in the mall';
-
-    GridController.prototype.size = 100;
-
-    GridController.prototype.spriteSheet = {
-      boxSize: 50,
-      squareLength: 4
-    };
-
-    GridController.prototype.length = 4;
+    GridController.prototype.Showing = false;
 
     GridController.prototype.getObjectiveStyle = function(objective) {
       return {
         'width': '50px',
         'height': '50px',
-        'background-image': 'url("images/items.png")',
+        'background-image': 'url(' + this.levelData.BackgroundImage + ')',
         'background-repeat': 'no-repeat',
         'background-position': -objective.image.row + 'px ' + -objective.image.col + 'px'
       };
@@ -195,7 +208,7 @@
       return {
         'width': '50px',
         'height': '50px',
-        'background-image': 'url("images/items.png")',
+        'background-image': 'url(' + this.levelData.BackgroundImage + ')',
         'background-repeat': 'no-repeat',
         'background-position': -point.backImage.row + 'px ' + -point.backImage.col + 'px'
       };
@@ -205,7 +218,7 @@
       return {
         'width': '50px',
         'height': '50px',
-        'background-image': 'url("images/backgrounds.png") ',
+        'background-image': 'url(' + this.levelData.ForegroundImage + ')',
         'background-repeat': 'no-repeat',
         'background-position': -point.image.row + 'px ' + -point.image.col + 'px'
       };
@@ -214,11 +227,11 @@
     GridController.prototype.createForegrounds = function(size) {
       var col, foreground, i, j, length, row, _i;
       foreground = [];
-      length = this.spriteSheet.squareLength * this.spriteSheet.squareLength;
+      length = this.levelData.spriteSheet.squareLength * this.levelData.spriteSheet.squareLength;
       j = 0;
       for (i = _i = 0; 0 <= size ? _i < size : _i > size; i = 0 <= size ? ++_i : --_i) {
-        row = j % this.spriteSheet.squareLength;
-        col = Math.floor(j / this.spriteSheet.squareLength);
+        row = j % this.levelData.spriteSheet.squareLength;
+        col = Math.floor(j / this.levelData.spriteSheet.squareLength);
         foreground[i] = {
           row: row * 50,
           col: col * 50
@@ -231,36 +244,43 @@
       return shuffle(foreground);
     };
 
-    GridController.prototype.createObjectives = function() {
+    GridController.prototype.createPrimaryObjectives = function() {
       var point, _i, _len, _ref;
       _ref = this.Grids;
       for (_i = 0, _len = _ref.length; _i < _len; _i++) {
         point = _ref[_i];
-        this.Objectives.push(new Objective(point.name, point.description, point.failedMessage, point.id, point.backImage));
+        if (point.PrimaryObjective) {
+          this.Objectives.push(new Objective(point.name, point.description, point.failedMessage, point.id, point.backImage));
+        }
       }
       this.Objectives[0].timer = '0:00';
       this.Objectives[0].timeinSeconds = -1;
       return this.CurrentObjective = 0;
     };
 
+    GridController.prototype.createSubObjectives = function(objective) {};
+
+    GridController.prototype.RecursivePointCreator = function(points, foregrounds, startingIndex) {
+      var point, _i, _len;
+      for (_i = 0, _len = points.length; _i < _len; _i++) {
+        point = points[_i];
+        this.Grids.push(new GridPoint(foregrounds[startingIndex], point.ImageLocation, point.Name, point.Objective, point.FoundMessage, this.levelData.spriteSheet.boxSize, startingIndex, point.PrimaryObjective));
+      }
+      startingIndex++;
+      if (point.NewItems) {
+        startingIndex = this.RecursivePointCreator(point.NewItems, foregrounds, startingIndex);
+      }
+      return startingIndex;
+    };
+
     GridController.prototype.createGridPoints = function() {
-      var foregrounds, i, nondummyItems, _i, _ref;
-      foregrounds = this.createForegrounds(this.size);
-      this.Grids.push(new GridPoint(foregrounds[0], {
-        row: 0,
-        col: 0
-      }, 'Shaniqua', 'Shaniqua is lost help find her', 'Shaniqua', 20, 0));
-      this.Grids.push(new GridPoint(foregrounds[1], {
-        row: 50,
-        col: 50
-      }, "Shaniqua's purse", 'Shaniqua lost her pruse help her find it', "her purse!", 20, 1));
-      this.Grids.push(new GridPoint(foregrounds[2], {
-        row: 100,
-        col: 0
-      }, "Shaniqua's lipstick", 'Shaniqua is lost her lipstick help her find it', "her lipstick!", 20, 2));
-      this.createObjectives();
-      nondummyItems = this.Grids.length - 1;
-      for (i = _i = nondummyItems, _ref = this.size; nondummyItems <= _ref ? _i < _ref : _i > _ref; i = nondummyItems <= _ref ? ++_i : --_i) {
+      var foregroundIndex, foregrounds, i, nondummyItems, _i, _ref;
+      foregrounds = this.createForegrounds(this.levelData.size);
+      foregroundIndex = 0;
+      foregroundIndex = this.RecursivePointCreator(this.levelData.Items, foregrounds, foregroundIndex);
+      this.createPrimaryObjectives();
+      nondummyItems = foregroundIndex;
+      for (i = _i = nondummyItems, _ref = this.levelData.size; nondummyItems <= _ref ? _i < _ref : _i > _ref; i = nondummyItems <= _ref ? ++_i : --_i) {
         this.Grids.push(new GridPoint(foregrounds[i], randomWrong(), '', '', '', 20, i));
       }
       return shuffle(this.Grids);
@@ -294,6 +314,10 @@
         return this.rootScope.$parent.$broadcast('timer-stop');
       };
       this.rootScope.$on('finished-conversation', function(event) {
+        return event.currentScope.grid.Showing = true;
+      });
+      this.rootScope.$on('level-downloaded', function(event, item) {
+        event.currentScope.grid.levelData = item;
         return event.currentScope.grid.createGridPoints();
       });
     }
@@ -337,9 +361,10 @@
 
     DialogController.$inject = ['$interval', '$scope'];
 
-    DialogController.prototype.ThankYou = function(item) {
+    DialogController.prototype.ThankYou = function(thanksMessage) {
+      this.Showing = true;
       this.Conversation = [];
-      this.Conversation.push(new speaker('Alexis ', 'red', "You found " + item));
+      this.Conversation.push(new speaker('', '', thanksMessage));
       this.isGenericMessage = true;
       this.Showing = true;
       this.isGreenMessage = true;
@@ -348,11 +373,19 @@
 
     DialogController.prototype.Failed = function(item) {
       this.Conversation = [];
-      this.Conversation.push(new speaker('Alexis ', 'red', "That is not " + item));
+      this.Conversation.push(new speaker('', '', "That is not " + item));
       this.isGenericMessage = true;
       this.Showing = true;
       this.isRedMessage = true;
       return this.CurrentDialog.push(this.Conversation[0]);
+    };
+
+    DialogController.prototype.MoreItems = function(message) {
+      var currentSpeaker;
+      currentSpeaker = this.speakers[message.SpeakerId];
+      this.Conversation.push(new speaker(currentSpeaker.Name, currentSpeaker.Image, message.Text));
+      this.CurrentDialog.push(this.Conversation[0]);
+      return this.Showing = true;
     };
 
     DialogController.prototype.FinishConversating = function() {
@@ -362,17 +395,22 @@
     };
 
     DialogController.prototype.CreateConversation = function() {
-      this.Conversation.push(new speaker('Phone', 'red', "Ring Ring "));
-      this.Conversation.push(new speaker('Alexis', 'red', "Hello"));
-      this.Conversation.push(new speaker('Caller', 'red', "Is Shaniqua there?"));
-      this.Conversation.push(new speaker('Alexis', 'red', "No I think she is at the mall"));
+      var conversation, currentSpeaker, _i, _len, _ref;
+      _ref = this.levelData.OpeningConversation;
+      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+        conversation = _ref[_i];
+        currentSpeaker = this.speakers[conversation.SpeakerId];
+        this.Conversation.push(new speaker(currentSpeaker.Name, currentSpeaker.Image, conversation.Text));
+      }
       this.CurrentDialog.push(this.Conversation[0]);
       return this.Showing = true;
     };
 
     DialogController.prototype.CreateFinishingConversation = function(time) {
+      var currentSpeaker;
+      currentSpeaker = this.speakers[this.levelData.EndingConversation.SpeakerId];
       this.Conversation = [];
-      this.Conversation.push(new speaker('Alexis ', 'red', "You Found her and her stuff in: " + time));
+      this.Conversation.push(new speaker(currentSpeaker.Name, currentSpeaker.Image, conversation.Text));
       this.Finished = true;
       this.Showing = true;
       return this.CurrentDialog.push(this.Conversation[0]);
@@ -395,7 +433,11 @@
     function DialogController(interval, $scope) {
       this.interval = interval;
       this.rootScope = $scope;
+      this.rootScope.$on('speakers-downloaded', function(event, item) {
+        return event.currentScope.dialog.speakers = item;
+      });
       this.rootScope.$on('level-downloaded', function(event, item) {
+        event.currentScope.dialog.levelData = item;
         return event.currentScope.dialog.CreateConversation();
       });
       this.rootScope.$on('thank-you', function(event, item) {
@@ -403,6 +445,9 @@
       });
       this.rootScope.$on('failed-to-find', function(event, item) {
         return event.currentScope.dialog.Failed(item);
+      });
+      this.rootScope.$on('more-items', function(event, message) {
+        return event.currentScope.dialog.MoreItems(message);
       });
       this.rootScope.$on('found-everything', function(event, time) {
         return event.currentScope.dialog.CreateFinishingConversation(time);

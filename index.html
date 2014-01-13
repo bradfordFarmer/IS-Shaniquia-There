@@ -16,32 +16,31 @@
 <body ng-app="ShaniquaApp" >
     
     
-    <div  class="pure-g-r Showing-{{level.Showing}}" ng-controller="LevelController as levels"   id="layout">
-         <div class="sidebar pure-u">
+    <div  class="pure-g-r Showing-{{levels.Showing}} App" ng-controller="LevelController as levels"   id="layout">
+         <div class="sidebar pure-u-1">
                <hgroup>
                     Is Shaniquia there? 
                     <p/>
                     Select your stage
                 </hgroup>
-                     <div class="pure-u-1 content" >
-                         <ul class="unstyled">
-                             <li ng-repeat="stage in levels.stages">
-                             <span ng-style ="levels.getStageStyle(stage)" ></span>
-                                 <br/> 
-                                 {{stage.name}}
-                             </li>
-                        </ul> 
-                    </div>
              </div>
+                     <div class="pure-u-1 content" >
+                         <span class="unstyled">
+                             <div ng-repeat="stage in levels.stages" ng-click ="levels.loadLevel(stage.levelUrl)">
+                             <span ng-style ="level.getBackgroundStyle(stage.levelImage)" ></span>
+                                 <br/> 
+                                 {{stage.LevelName}}
+                             </div>
+                        </span> 
+                    </div>
     </div>
     
     <div  class="pure-g-r Showing-{{grid.Showing}}" ng-controller="GridController as grid"   id="layout">
         <div class="sidebar pure-u">
         <header class="header">
-            <hgroup>
-                <h1 class="brand-title">{{grid.StageName}} </h1><p/>
-               
-            </hgroup>
+                <hgroup>
+                    <h1 class="brand-title">{{grid.StageName}} </h1><p/>
+                </hgroup>
             </header>
              <h2 class="brand-tagline">Objectives:  <timer interval="1000" autostart="false">{{minutes}} : {{seconds}} </timer>
             </h2><p/>

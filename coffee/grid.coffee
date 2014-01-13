@@ -44,9 +44,12 @@ app.factory 'LevelLoader' , ($http,$rootScope)->
 app.controller 'LevelController',
     class LevelController
         @$inject: ['$interval','$scope' ,'LevelLoader'] 
-        levels : [{'none':'found'}]
+        stages : [{'none':'found'}]
+        LevelLoader:{}
+        Showing:false
         loadLevel:(levelurl)->
-             scope= @rootScope
+            scope= @rootScope
+            @Showing=false
             @LevelLoader.getLevels(levelurl ,scope).
                 success( (data, status)->
                     scope.$parent.$broadcast 'level-downloaded' , data
@@ -55,21 +58,40 @@ app.controller 'LevelController',
                 error( (data, status)->
                     alert 'error'
                 )
-                
-        getLevelList: (scope,levels)->
-            @rootScope.$parent.$broadcast 'show-loading-screen' , 1
-            @LevelLoader.getLevels('levels/levellist.json', @scope).
+        getSpeakerList: (scope)->
+            @LevelLoader.getLevels('json/characters.json', scope).
                 success( (data, status)->
-                    levels=data
+                    scope.$parent.$broadcast 'speakers-downloaded' , data
+                ).
+                error( (data, status)->
+                    alert 'error'
+                )
+        getLevelList: (scope,@stages, showing)->
+            @rootScope.$parent.$broadcast 'show-loading-screen' , 1
+            @LevelLoader.getLevels('levels/levellist.json', scope).
+                success( (data, status)->
+                    scope.$parent.$broadcast 'level-list-downloaded' , data
                     scope.$parent.$broadcast 'remove-loading-screen' , 1
                 ).
                 error( (data, status)->
                     alert 'error'
                 )
+        getBackgroundStyle:(image)->
+            { 
+                'width':'200px'
+                'height':'200px'
+                'background-image': 'url('+image+')'
+            }
             
         constructor: (@interval,$scope,@LevelLoader)->
             @rootScope = $scope
-            @getLevelList($scope, @levels)
+            @rootScope.$on 'level-list-downloaded' , (event,data)->
+                event.currentScope.levels.Showing=true
+                event.currentScope.levels.stages=data
+            @getSpeakerList($scope)
+            @getLevelList($scope, @stages, @Showing)
+            
+            
             
 
 ###
@@ -77,24 +99,11 @@ app.controller 'LevelController',
 ###
 
 class Objective
-    constructor:(name,description, failedMessage, pointid,image) ->
-        @name = name
-        @description =description
-        @pointid = pointid
-        @failedMessage=failedMessage
-        @completed=false
-        @image = image
+    constructor:(@name,@description, @failedMessage, @pointid,@image) ->
         
     
 class GridPoint
-    constructor: (image, backImage,name, description, failedMessage, size,pointid)->
-        @id = pointid
-        @image= image
-        @backImage=backImage
-        @size= size
-        @name =name
-        @description=description
-        @failedMessage=failedMessage
+    constructor: (@image, @backImage,@name, @description, @failedMessage, @size,@pointid,@PrimaryObjective)->
     
 
 app.controller 'GridController',
@@ -104,20 +113,12 @@ app.controller 'GridController',
         Objectives:[]
         Grids : []
         StopTimer:[]
-        ForegroundImageName:'backgrounds.png'
-        BackgroundImageName:'items.png'
-        StageName: 'Shaniquia in the mall'
-        size:100
-        spriteSheet:{
-            boxSize:50
-            squareLength:4
-        }
-        length:4 
+        Showing:false      
         getObjectiveStyle:(objective)->
            { 
                 'width':'50px'
                 'height':'50px'
-                'background-image': 'url("images/items.png")'
+                'background-image':  'url('+@levelData.BackgroundImage+')'
                 'background-repeat':'no-repeat'
                 'background-position' :-objective.image.row+'px '+  -objective.image.col+'px'
             } 
@@ -126,7 +127,7 @@ app.controller 'GridController',
             { 
                 'width':'50px'
                 'height':'50px'
-                'background-image': 'url("images/items.png")'
+                'background-image':  'url('+@levelData.BackgroundImage+')'
                 'background-repeat':'no-repeat'
                 'background-position' :-point.backImage.row+'px '+  -point.backImage.col+'px'
             }
@@ -136,7 +137,7 @@ app.controller 'GridController',
             {
                 'width':'50px'
                 'height':'50px'
-                'background-image': 'url("images/backgrounds.png") '
+                'background-image': 'url('+@levelData.ForegroundImage+')'
                 'background-repeat':'no-repeat'
                 'background-position' : -point.image.row+'px '+  -point.image.col+'px'
             }
@@ -144,12 +145,12 @@ app.controller 'GridController',
 
         createForegrounds : (size)-> 
             foreground=[]
-            length =@spriteSheet.squareLength*@spriteSheet.squareLength
+            length =@levelData.spriteSheet.squareLength*@levelData.spriteSheet.squareLength
             j=0
             for i in [0...size]
                 
-                row = j% @spriteSheet.squareLength
-                col = Math.floor(j/@spriteSheet.squareLength)
+                row = j% @levelData.spriteSheet.squareLength
+                col = Math.floor(j/@levelData.spriteSheet.squareLength)
                 foreground[i]= { row:row*50 , col:col*50}
                 j++;
                 if j is length 
@@ -157,19 +158,30 @@ app.controller 'GridController',
 
             shuffle(foreground)
             
-        createObjectives:()->
-            @Objectives.push new Objective point.name,point.description, point.failedMessage, point.id, point.backImage   for point in @Grids
+        createPrimaryObjectives:()->
+            for point in @Grids
+                if point.PrimaryObjective
+                    @Objectives.push new Objective point.name,point.description, point.failedMessage, point.id, point.backImage 
             @Objectives[0].timer='0:00'
             @Objectives[0].timeinSeconds=-1
             @CurrentObjective=0
+        createSubObjectives:(objective)->
+        
+        RecursivePointCreator: (points, foregrounds, startingIndex)-> 
+            for point in points
+                 @Grids.push new GridPoint foregrounds[startingIndex], point.ImageLocation,point.Name,  point.Objective, point.FoundMessage, @levelData.spriteSheet.boxSize,  startingIndex,point.PrimaryObjective
+                startingIndex++
+                if point.NewItems
+                    startingIndex=@RecursivePointCreator point.NewItems , foregrounds, startingIndex 
+            startingIndex 
+
         createGridPoints : ()->
-            foregrounds = @createForegrounds(@size)
-            @Grids.push new GridPoint foregrounds[0], {row:0,  col:0},'Shaniqua',  'Shaniqua is lost help find her', 'Shaniqua', 20,  0
-            @Grids.push new GridPoint foregrounds[1],{row:50, col:50},"Shaniqua's purse", 'Shaniqua lost her pruse help her find it', "her purse!", 20, 1
-            @Grids.push new GridPoint foregrounds[2],{row:100,col:0}, "Shaniqua's lipstick",'Shaniqua is lost her lipstick help her find it', "her lipstick!",20,  2
-            @createObjectives()
-            nondummyItems =  @Grids.length-1
-            @Grids.push new GridPoint foregrounds[i], randomWrong(), '','','', 20, i  for i in [nondummyItems...@size] 
+            foregrounds = @createForegrounds(@levelData.size)
+            foregroundIndex=0
+            foregroundIndex= @RecursivePointCreator @levelData.Items , foregrounds, foregroundIndex  
+            @createPrimaryObjectives()
+            nondummyItems =  foregroundIndex
+            @Grids.push new GridPoint foregrounds[i], randomWrong(), '','','', 20, i  for i in [nondummyItems...@levelData.size] 
             shuffle(@Grids)
             
         checkGridPoint: (point)-> 
@@ -185,22 +197,22 @@ app.controller 'GridController',
             else 
                 @Objectives[@CurrentObjective].timeinSeconds+=10
                 @rootScope.$parent.$broadcast 'failed-to-find',@Objectives[@CurrentObjective].failedMessage 
-
-                @rootScope.$broadcast 'timer-add-time', 10 
+                @rootScope.$broadcast 'timer-add-time', 10  
         constructor: (@interval,$scope)->
             @rootScope=$scope
             currentController=this.Objectives
             @StopTimer = ->  @rootScope.$parent.$broadcast 'timer-stop';
             @rootScope.$on 'finished-conversation' , (event)->
+                event.currentScope.grid.Showing=true
+            @rootScope.$on 'level-downloaded' , (event,item)->
+                event.currentScope.grid.levelData= item
                 event.currentScope.grid.createGridPoints() 
 ###
    Dialog functionallity.
 ###                
 class  speaker
-    constructor:( name , image, text) ->
-        @name = name
-        @image = image 
-        @text =text
+    constructor:( @name , @image, @text) ->
+
 
 app.controller 'DialogController',
     class DialogController
@@ -213,34 +225,41 @@ app.controller 'DialogController',
         isGreenMessage : false
         Conversation : []
         @$inject: ['$interval','$scope']
-        ThankYou : (item)->
+        ThankYou : (thanksMessage)->
+            @Showing=true;
             @Conversation=[];
-            @Conversation.push(new speaker('Alexis ', 'red', "You found " + item )) 
+            @Conversation.push(new speaker('', '',thanksMessage)) 
             @isGenericMessage=true
             @Showing=true 
             @isGreenMessage=true
             @CurrentDialog.push @Conversation[0]
         Failed : (item)->
             @Conversation=[];
-            @Conversation.push(new speaker('Alexis ', 'red', "That is not " + item )) 
+            @Conversation.push(new speaker('', '', "That is not " + item )) 
             @isGenericMessage=true
             @Showing=true 
             @isRedMessage=true
             @CurrentDialog.push @Conversation[0]
+        MoreItems :(message)->
+            currentSpeaker =@speakers[message.SpeakerId]
+            @Conversation.push(new speaker(currentSpeaker.Name , currentSpeaker.Image, message.Text)) 
+            @CurrentDialog.push(@Conversation[0]);
+            @Showing=true
+            
         FinishConversating :->
             @rootScope.$parent.$broadcast 'timer-start'
             @rootScope.$parent.$broadcast 'finished-conversation' 
             @Showing=false
         CreateConversation: -> 
-            @Conversation.push(new speaker('Phone', 'red', "Ring Ring ")) 
-            @Conversation.push(new speaker('Alexis', 'red', "Hello")) 
-            @Conversation.push(new speaker('Caller', 'red', "Is Shaniqua there?")) 
-            @Conversation.push(new speaker('Alexis', 'red', "No I think she is at the mall")) 
+            for conversation in @levelData.OpeningConversation
+                currentSpeaker =@speakers[conversation.SpeakerId]
+                @Conversation.push(new speaker(currentSpeaker.Name , currentSpeaker.Image, conversation.Text)) 
             @CurrentDialog.push(@Conversation[0]);
             @Showing=true
         CreateFinishingConversation : (time)->
-            @Conversation=[];
-            @Conversation.push(new speaker('Alexis ', 'red', "You Found her and her stuff in: "+time )) 
+            currentSpeaker =@speakers[@levelData.EndingConversation.SpeakerId]
+            @Conversation=[]
+            @Conversation.push(new speaker(currentSpeaker.Name , currentSpeaker.Image, conversation.Text)) 
             @Finished=true
             @Showing=true 
             @CurrentDialog.push @Conversation[0]
@@ -257,11 +276,16 @@ app.controller 'DialogController',
             @isGreenMessage=false
         constructor:(@interval,$scope)->
             @rootScope=$scope
+            @rootScope.$on 'speakers-downloaded' , (event,item)->
+                 event.currentScope.dialog.speakers= item
             @rootScope.$on 'level-downloaded' , (event,item)->
-                 event.currentScope.dialog.CreateConversation() 
+                 event.currentScope.dialog.levelData= item
+                 event.currentScope.dialog.CreateConversation()
             @rootScope.$on 'thank-you' , (event,item)->
                 event.currentScope.dialog.ThankYou(item)
             @rootScope.$on 'failed-to-find' , (event,item)->
                 event.currentScope.dialog.Failed(item)
+            @rootScope.$on 'more-items' , (event,message)->
+                event.currentScope.dialog.MoreItems(message)
             @rootScope.$on 'found-everything' , (event,time)->
                 event.currentScope.dialog.CreateFinishingConversation(time)
