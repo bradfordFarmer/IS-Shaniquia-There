@@ -175,6 +175,7 @@
       this.size = size;
       this.pointid = pointid;
       this.PrimaryObjective = PrimaryObjective;
+      this.subIndexes = [];
     }
 
     return GridPoint;
@@ -245,32 +246,50 @@
     };
 
     GridController.prototype.createPrimaryObjectives = function() {
-      var point, _i, _len, _ref;
+      var point, _i, _len, _ref, _results;
       _ref = this.Grids;
+      _results = [];
       for (_i = 0, _len = _ref.length; _i < _len; _i++) {
         point = _ref[_i];
         if (point.PrimaryObjective) {
-          this.Objectives.push(new Objective(point.name, point.description, point.failedMessage, point.id, point.backImage));
+          _results.push(this.Objectives.push(new Objective(point.name, point.description, point.failedMessage, point.id, point.backImage)));
+        } else {
+          _results.push(void 0);
         }
       }
-      this.Objectives[0].timer = '0:00';
-      this.Objectives[0].timeinSeconds = -1;
-      return this.CurrentObjective = 0;
+      return _results;
     };
 
-    GridController.prototype.createSubObjectives = function(objective) {};
+    GridController.prototype.createSubObjectives = function(currentPoint) {
+      var hassub, point, pointIndex, _i, _len, _ref;
+      hassub = false;
+      _ref = currentPoint.subIndexes;
+      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+        pointIndex = _ref[_i];
+        hassub = true;
+        point = this.Grids[pointIndex];
+        this.Objectives.push(new Objective(point.name, point.description, point.failedMessage, point.id, point.backImage));
+      }
+      return hassub;
+    };
 
     GridController.prototype.RecursivePointCreator = function(points, foregrounds, startingIndex) {
-      var point, _i, _len;
+      var i, point, tempIndex, _i, _j, _len, _ref;
       for (_i = 0, _len = points.length; _i < _len; _i++) {
         point = points[_i];
         this.Grids.push(new GridPoint(foregrounds[startingIndex], point.ImageLocation, point.Name, point.Objective, point.FoundMessage, this.levelData.spriteSheet.boxSize, startingIndex, point.PrimaryObjective));
       }
+      tempIndex = startingIndex;
       startingIndex++;
-      if (point.NewItems) {
-        startingIndex = this.RecursivePointCreator(point.NewItems, foregrounds, startingIndex);
+      if (point.FoundConversation) {
+        if (point.FoundConversation.NewItems) {
+          startingIndex = this.RecursivePointCreator(point.FoundConversation.NewItems, foregrounds, startingIndex);
+          for (i = _j = _ref = tempIndex + 1; _ref <= startingIndex ? _j < startingIndex : _j > startingIndex; i = _ref <= startingIndex ? ++_j : --_j) {
+            this.Grids[tempIndex].subIndexes.push(i);
+          }
+        }
       }
-      return startingIndex;
+      return ++startingIndex;
     };
 
     GridController.prototype.createGridPoints = function() {
@@ -287,20 +306,35 @@
     };
 
     GridController.prototype.checkGridPoint = function(point) {
-      var found;
+      var done, found, i, j, objective, _i, _len, _ref;
       found = false;
-      if (point.id === this.Objectives[this.CurrentObjective].pointid) {
-        found = true;
+      i = 0;
+      j = 0;
+      done = true;
+      _ref = this.Objectives;
+      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+        objective = _ref[_i];
+        if (objective.pointid === point.id) {
+          found = true;
+          j = i;
+        }
+        if (objective.completed = false) {
+          done = false;
+        }
+        i++;
       }
       if (found) {
-        this.Objectives[this.CurrentObjective].completed = true;
-        this.rootScope.$parent.$broadcast('thank-you', this.Objectives[this.CurrentObjective].name);
-        this.CurrentObjective++;
-        if (this.CurrentObjective === this.Objectives.length) {
+        this.Objectives[j].completed = true;
+        this.rootScope.$parent.$broadcast('thank-you', this.Objectives[j].name);
+        if (this.createSubObjectives(point)) {
+          done = false;
+          this.rootScope.$parent.$broadcast('more-items', this.Objectives[this.CurrentObjective].failedMessage);
+          this.PauseTimer();
+        }
+        if (done) {
           return this.StopTimer();
         }
       } else {
-        this.Objectives[this.CurrentObjective].timeinSeconds += 10;
         this.rootScope.$parent.$broadcast('failed-to-find', this.Objectives[this.CurrentObjective].failedMessage);
         return this.rootScope.$broadcast('timer-add-time', 10);
       }
@@ -312,6 +346,9 @@
       currentController = this.Objectives;
       this.StopTimer = function() {
         return this.rootScope.$parent.$broadcast('timer-stop');
+      };
+      this.PauseTimer = function() {
+        return this.rootScope.$parent.$broadcast('timer-pause');
       };
       this.rootScope.$on('finished-conversation', function(event) {
         return event.currentScope.grid.Showing = true;
@@ -410,7 +447,7 @@
       var currentSpeaker;
       currentSpeaker = this.speakers[this.levelData.EndingConversation.SpeakerId];
       this.Conversation = [];
-      this.Conversation.push(new speaker(currentSpeaker.Name, currentSpeaker.Image, conversation.Text));
+      this.Conversation.push(new speaker(currentSpeaker.Name, currentSpeaker.Image, this.levelData.EndingConversation.Text));
       this.Finished = true;
       this.Showing = true;
       return this.CurrentDialog.push(this.Conversation[0]);

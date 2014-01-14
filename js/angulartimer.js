@@ -42,7 +42,10 @@ angular.module('timer', [])
         $scope.$on('timer-resume', function () {
           $scope.resume();
         });
-
+        
+        $scope.$on('timer-pause', function () {
+            $scope.stop();
+        });
         $scope.$on('timer-stop', function () {
           $scope.stop();
           $scope.$parent.$parent.$broadcast('found-everything', $scope.timeAsText);

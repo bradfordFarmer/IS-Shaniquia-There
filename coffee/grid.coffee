@@ -91,20 +91,17 @@ app.controller 'LevelController',
             @getSpeakerList($scope)
             @getLevelList($scope, @stages, @Showing)
             
-            
-            
-
 ###
     The grid Controller
 ###
 
 class Objective
     constructor:(@name,@description, @failedMessage, @pointid,@image) ->
-        
+       
     
 class GridPoint
     constructor: (@image, @backImage,@name, @description, @failedMessage, @size,@pointid,@PrimaryObjective)->
-    
+         @subIndexes=[]
 
 app.controller 'GridController',
     class GridController
@@ -148,7 +145,6 @@ app.controller 'GridController',
             length =@levelData.spriteSheet.squareLength*@levelData.spriteSheet.squareLength
             j=0
             for i in [0...size]
-                
                 row = j% @levelData.spriteSheet.squareLength
                 col = Math.floor(j/@levelData.spriteSheet.squareLength)
                 foreground[i]= { row:row*50 , col:col*50}
@@ -162,18 +158,25 @@ app.controller 'GridController',
             for point in @Grids
                 if point.PrimaryObjective
                     @Objectives.push new Objective point.name,point.description, point.failedMessage, point.id, point.backImage 
-            @Objectives[0].timer='0:00'
-            @Objectives[0].timeinSeconds=-1
-            @CurrentObjective=0
-        createSubObjectives:(objective)->
-        
+                    
+        createSubObjectives:(currentPoint)->
+            hassub= false
+            for pointIndex in currentPoint.subIndexes
+                hassub=true
+                point = @Grids[pointIndex]
+                @Objectives.push new Objective point.name,point.description, point.failedMessage, point.id, point.backImage 
+            hassub
         RecursivePointCreator: (points, foregrounds, startingIndex)-> 
             for point in points
                  @Grids.push new GridPoint foregrounds[startingIndex], point.ImageLocation,point.Name,  point.Objective, point.FoundMessage, @levelData.spriteSheet.boxSize,  startingIndex,point.PrimaryObjective
+                tempIndex=startingIndex;
                 startingIndex++
-                if point.NewItems
-                    startingIndex=@RecursivePointCreator point.NewItems , foregrounds, startingIndex 
-            startingIndex 
+                if point.FoundConversation
+                    if point.FoundConversation.NewItems
+                        startingIndex=@RecursivePointCreator point.FoundConversation.NewItems , foregrounds, startingIndex
+                        for i in [tempIndex+1...startingIndex]
+                            @Grids[tempIndex].subIndexes.push i
+            ++startingIndex
 
         createGridPoints : ()->
             foregrounds = @createForegrounds(@levelData.size)
@@ -186,22 +189,33 @@ app.controller 'GridController',
             
         checkGridPoint: (point)-> 
             found =false
-            if point.id is @Objectives[@CurrentObjective].pointid
-                found =true
+            i=0
+            j=0
+            done= true
+            for  objective in @Objectives
+                if objective.pointid is point.id
+                    found=true
+                    j=i
+                if objective.completed=false
+                    done=false
+                i++
             if found
-                @Objectives[@CurrentObjective].completed= true
-                @rootScope.$parent.$broadcast 'thank-you', @Objectives[@CurrentObjective].name 
-                @CurrentObjective++
-                if @CurrentObjective is @Objectives.length
+                @Objectives[j].completed= true
+                @rootScope.$parent.$broadcast 'thank-you', @Objectives[j].name 
+                if @createSubObjectives point
+                    done=false
+                    @rootScope.$parent.$broadcast 'more-items',@Objectives[@CurrentObjective].failedMessage 
+                    @PauseTimer() 
+                if done
                     @StopTimer()
             else 
-                @Objectives[@CurrentObjective].timeinSeconds+=10
                 @rootScope.$parent.$broadcast 'failed-to-find',@Objectives[@CurrentObjective].failedMessage 
                 @rootScope.$broadcast 'timer-add-time', 10  
         constructor: (@interval,$scope)->
             @rootScope=$scope
             currentController=this.Objectives
             @StopTimer = ->  @rootScope.$parent.$broadcast 'timer-stop';
+            @PauseTimer= -> @rootScope.$parent.$broadcast 'timer-pause';
             @rootScope.$on 'finished-conversation' , (event)->
                 event.currentScope.grid.Showing=true
             @rootScope.$on 'level-downloaded' , (event,item)->
@@ -259,7 +273,7 @@ app.controller 'DialogController',
         CreateFinishingConversation : (time)->
             currentSpeaker =@speakers[@levelData.EndingConversation.SpeakerId]
             @Conversation=[]
-            @Conversation.push(new speaker(currentSpeaker.Name , currentSpeaker.Image, conversation.Text)) 
+            @Conversation.push(new speaker(currentSpeaker.Name , currentSpeaker.Image, @levelData.EndingConversation.Text)) 
             @Finished=true
             @Showing=true 
             @CurrentDialog.push @Conversation[0]
